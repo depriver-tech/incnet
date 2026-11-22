@@ -1,0 +1,31 @@
+# Self-hosting: cp .env.example .env, edit APP_URL and APP_SECRET, then `docker compose up -d`.
+# Put a reverse proxy with HTTPS (Caddy, nginx, Traefik) in front of port 3000.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: incnet
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-incnet}
+      POSTGRES_DB: incnet
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incnet"]
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://incnet:${POSTGRES_PASSWORD:-incnet}@db:5432/incnet
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
