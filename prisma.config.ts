@@ -5,9 +5,9 @@ import { defineConfig } from 'prisma/config';
 function withSchema(url?: string) {
   const schema = process.env.DATABASE_SCHEMA;
   if (!url || !schema) return url;
-  const u = new URL(url);
-  u.searchParams.set('schema', schema);
-  return u.toString();
+  // Plain string work: real-world passwords often contain characters URL parsers reject.
+  const clean = url.replace(/([?&])schema=[^&]*&?/, '$1').replace(/[?&]$/, '');
+  return `${clean}${clean.includes('?') ? '&' : '?'}schema=${encodeURIComponent(schema)}`;
 }
 
 export default defineConfig({
