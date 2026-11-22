@@ -51,13 +51,10 @@ const NETWORKS: { id: string; name: string; logo: string; wide?: boolean }[] = [
 function NetworkLogos({ label }: { label: string }) {
   const [missing, setMissing] = useState<Record<string, boolean>>({});
   return (
-    <div className="p-nets" aria-label={label}>
-      {NETWORKS.map((n) => (
-        <span key={n.id} className="p-net">
-          {!missing[n.id] && <img src={n.logo} alt="" className={n.wide ? 'wide' : undefined} onError={() => setMissing((m) => ({ ...m, [n.id]: true }))} />}
-          {n.name}
-        </span>
-      ))}
+    <div className="p-nets" role="img" aria-label={label}>
+      {NETWORKS.map((n) => missing[n.id]
+        ? <span key={n.id} className="p-net-name">{n.name}</span>
+        : <img key={n.id} src={n.logo} alt={n.name} title={n.name} className={n.wide ? 'wide' : undefined} onError={() => setMissing((m) => ({ ...m, [n.id]: true }))} />)}
     </div>
   );
 }
@@ -198,9 +195,9 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
                 {props.payments ? (
                   <form onSubmit={(e) => { e.preventDefault(); pay(); }} className="p-pay">
                     <label>{t.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="07XX XXX XXX" autoComplete="tel" /></label>
-                    <NetworkLogos label={t.with} />
                     {selected && selected.price < props.minPayment && <p className="p-note">{t.min} TSh {props.minPayment}</p>}
                     <button className="p-btn p-big" disabled={busy}>{busy ? <span className="p-dots" /> : `${t.pay} ${selected?.priceLabel ?? ''}`}</button>
+                    <NetworkLogos label={t.with} />
                     <p className="p-secure"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4Zm-1 15-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7Z" /></svg>{t.secure}</p>
                   </form>
                 ) : <p className="p-note">{t.noPay}</p>}
@@ -336,10 +333,10 @@ const PORTAL_CSS = `
 .p-stack{display:grid;gap:10px}
 .p-code-input{text-align:center;font-size:22px!important;letter-spacing:.18em!important;padding:15px!important}
 .p-pop{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--accent);color:#fff;font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.02em;vertical-align:2px}
-.p-nets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.p-net{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:12.5px;font-weight:600;color:var(--ink);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.p-net img{width:26px;height:26px;flex:none;object-fit:contain;border-radius:6px;background:#fff;padding:1px}
-.p-net img.wide{width:52px;padding:2px 3px}
+.p-nets{display:flex;justify-content:center;align-items:center;gap:8px}
+.p-nets img{height:30px;width:30px;object-fit:contain;border-radius:7px;background:#fff;padding:2px;border:1px solid var(--line)}
+.p-nets img.wide{width:62px;padding:3px 5px}
+.p-net-name{font-size:11px;font-weight:700;color:var(--muted)}
 .p-secure{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12px;margin:0;text-align:center}
 .p-secure svg{color:#1f9d55;flex:none}
 .p-track{list-style:none;display:flex;justify-content:space-between;gap:6px;padding:0;margin:0 0 20px;font-size:12px;color:var(--muted)}
