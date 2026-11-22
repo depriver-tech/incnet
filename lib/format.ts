@@ -17,5 +17,19 @@ export function ago(date: Date | null | undefined) {
   return `${Math.floor(s / 86400)} d ago`;
 }
 
-export const dateTime = (d: Date | null | undefined) =>
-  d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: process.env.TZ || 'Africa/Dar_es_Salaam' }) : '—';
+/** A real IANA time zone, or null. Hosts set odd values in TZ (Vercel uses ":UTC"), which Intl rejects. */
+export function validTimeZone(tz: string | null | undefined) {
+  if (!tz) return null;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+    return tz;
+  } catch {
+    return null;
+  }
+}
+
+/** The fallback zone for dates: DEFAULT_TIMEZONE if valid, else East Africa Time. Never the server's own TZ. */
+export const DEFAULT_TZ = validTimeZone(process.env.DEFAULT_TIMEZONE) ?? 'Africa/Dar_es_Salaam';
+
+export const dateTime = (d: Date | null | undefined, tz?: string | null) =>
+  d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: validTimeZone(tz) ?? DEFAULT_TZ }) : '—';

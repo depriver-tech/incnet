@@ -66,7 +66,7 @@ export default async function Sales({ searchParams }: { searchParams: Promise<Re
                   <td className="mono small">{maskPhone(p.phone)}</td>
                   <td className="muted">{p.site?.name ?? '—'}</td>
                   <td className="mono small">{p.access?.code ?? '—'}</td>
-                  <td className="muted small">{dateTime(p.createdAt)}</td>
+                  <td className="muted small">{dateTime(p.createdAt, workspace.timezone)}</td>
                   <td><PayBadge status={p.status} />{p.failureReason && p.status !== 'completed' && <div className="muted" style={{ fontSize: 11.5 }}>{p.failureReason}</div>}</td>
                 </tr>
               ))}

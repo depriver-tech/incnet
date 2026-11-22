@@ -61,7 +61,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
         {r.topCustomers.length === 0 ? <p className="empty">{t('common.none')}</p> : (
           <div className="table-wrap"><table>
             <thead><tr><th>#</th><th>Phone</th><th>{t('r.sales')}</th><th>{t('r.revenue')}</th><th>Last</th></tr></thead>
-            <tbody>{r.topCustomers.map((c, i) => <tr key={c.phone}><td className="muted">{i + 1}</td><td className="mono">{maskPhone(c.phone)}</td><td>{c.count}</td><td><strong>{money(c.total)}</strong></td><td className="muted small">{dateTime(c.last)}</td></tr>)}</tbody>
+            <tbody>{r.topCustomers.map((c, i) => <tr key={c.phone}><td className="muted">{i + 1}</td><td className="mono">{maskPhone(c.phone)}</td><td>{c.count}</td><td><strong>{money(c.total)}</strong></td><td className="muted small">{dateTime(c.last, workspace.timezone)}</td></tr>)}</tbody>
           </table></div>
         )}
       </section>

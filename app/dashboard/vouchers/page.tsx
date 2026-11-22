@@ -49,7 +49,7 @@ export default async function Vouchers({ searchParams }: { searchParams: Promise
                   <tr key={a.id}>
                     <td className="mono"><strong>{a.code}</strong><div className="muted small" style={{ fontFamily: 'var(--font-body)' }}>{a.package.name} · {a.kind === 'payment' ? `paid by ${a.phone}` : 'voucher'}</div></td>
                     <td><AccessBadge status={a.status} /></td>
-                    <td className="muted small">{a.expiresAt ? `Ends ${dateTime(a.expiresAt)}` : '—'}</td>
+                    <td className="muted small">{a.expiresAt ? `Ends ${dateTime(a.expiresAt, workspace.timezone)}` : '—'}</td>
                     <td style={{ textAlign: 'right' }}>{can(role, 'vouchers.revoke') && ['unused', 'active'].includes(a.status) && <form action={revokeAccess}><input type="hidden" name="id" value={a.id} /><button className="btn btn-danger btn-sm">Cancel</button></form>}</td>
                   </tr>
                 ))}
@@ -67,7 +67,7 @@ export default async function Vouchers({ searchParams }: { searchParams: Promise
                     <tr key={b.id}>
                       <td><strong>{b.count} × {b.package.name}</strong><div className="muted small">{b.site.name} · {duration(b.package.durationMinutes)} · {money(b.package.price)}{b.note ? ` · ${b.note}` : ''}</div></td>
                       <td className="muted">{b._count.accesses} / {b.count}</td>
-                      <td className="muted small">{dateTime(b.createdAt)}</td>
+                      <td className="muted small">{dateTime(b.createdAt, workspace.timezone)}</td>
                       <td style={{ textAlign: 'right' }}><Link className="btn btn-ghost btn-sm" href={`/dashboard/vouchers/${b.id}`}>Print</Link></td>
                     </tr>
                   ))}

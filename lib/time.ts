@@ -1,6 +1,11 @@
 /** Time-zone helpers that do not depend on the server's own zone (Vercel always runs in UTC). */
 
+import { DEFAULT_TZ, validTimeZone } from './format';
+
+const zone = (tz: string) => validTimeZone(tz) ?? DEFAULT_TZ;
+
 function offsetMs(tz: string, d: Date) {
+  tz = zone(tz);
   const p = Object.fromEntries(
     new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
       .formatToParts(d)
@@ -26,6 +31,6 @@ export function startOfMonth(tz: string, d = new Date()) {
 }
 
 /** YYYY-MM-DD of `d` in `tz`, for grouping by day. */
-export const dayKey = (tz: string, d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
+export const dayKey = (tz: string, d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone(tz) }).format(d);
 
 export const TIMEZONES = ['Africa/Dar_es_Salaam', 'Africa/Nairobi', 'Africa/Kampala', 'Africa/Kigali', 'Africa/Lusaka', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Accra', 'Europe/London', 'UTC'];

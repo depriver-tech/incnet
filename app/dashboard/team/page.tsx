@@ -65,7 +65,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ w
                         </form>
                       ) : <span className={`badge ${m.role === 'owner' ? 'accent' : ''}`}>{ROLE_INFO[m.role as Role]?.label ?? m.role}</span>}
                     </td>
-                    <td className="muted small">{dateTime(m.createdAt)}</td>
+                    <td className="muted small">{dateTime(m.createdAt, workspace.timezone)}</td>
                     <td style={{ textAlign: 'right' }}>{editable && <form action={removeMember}><input type="hidden" name="id" value={m.id} /><button className="btn btn-danger btn-sm">Remove</button></form>}</td>
                   </tr>
                 );
@@ -78,7 +78,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ w
               <table><tbody>
                 {invites.map((i) => (
                   <tr key={i.id}>
-                    <td><strong>{i.label ?? 'Invite link'}</strong><div className="muted small">{ROLE_INFO[i.role as Role]?.label} · expires {dateTime(i.expiresAt)}</div></td>
+                    <td><strong>{i.label ?? 'Invite link'}</strong><div className="muted small">{ROLE_INFO[i.role as Role]?.label} · expires {dateTime(i.expiresAt, workspace.timezone)}</div></td>
                     <td style={{ textAlign: 'right' }}>{manage && <form action={revokeInvite}><input type="hidden" name="id" value={i.id} /><button className="btn btn-ghost btn-sm">Cancel</button></form>}</td>
                   </tr>
                 ))}
@@ -116,7 +116,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ w
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id}>
-                  <td className="muted small" title={dateTime(l.createdAt)}>{ago(l.createdAt)}</td>
+                  <td className="muted small" title={dateTime(l.createdAt, workspace.timezone)}>{ago(l.createdAt)}</td>
                   <td>{l.user?.name ?? 'Removed user'}</td>
                   <td>{AUDIT_LABELS[l.action] ?? l.action}</td>
                   <td className="muted small">{l.detail}</td>

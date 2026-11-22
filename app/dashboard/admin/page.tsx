@@ -32,7 +32,7 @@ export default async function Admin() {
                 <td>{w.sites.length} <span className="muted small">· seen {ago(last)}</span></td>
                 <td>{w._count.accesses}</td>
                 <td>{money(volume.get(w.id) ?? 0)}</td>
-                <td className="muted small">{dateTime(w.createdAt)}</td>
+                <td className="muted small">{dateTime(w.createdAt, w.timezone)}</td>
               </tr>
             );
           })}

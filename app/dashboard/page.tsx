@@ -109,7 +109,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
                 {recent.map((p) => (
                   <tr key={p.id}>
                     <td><strong>{money(p.amount)}</strong><div className="muted small">{p.package.name} · {maskPhone(p.phone)}</div></td>
-                    <td className="muted small">{dateTime(p.createdAt)}</td>
+                    <td className="muted small">{dateTime(p.createdAt, workspace.timezone)}</td>
                     <td style={{ textAlign: 'right' }}><PayBadge status={p.status} /></td>
                   </tr>
                 ))}

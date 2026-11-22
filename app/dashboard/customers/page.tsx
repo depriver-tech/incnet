@@ -79,8 +79,8 @@ export default async function Customers({ searchParams }: { searchParams: Promis
                     <td><strong>{money(c.total)}</strong></td>
                     <td>{money(Math.round(c.total / c.count))}</td>
                     <td className="small">{pkgName.get(fav[0]) ?? '—'}</td>
-                    <td className="muted small">{dateTime(c.first)}</td>
-                    <td className="muted small">{dateTime(c.last)}</td>
+                    <td className="muted small">{dateTime(c.first, workspace.timezone)}</td>
+                    <td className="muted small">{dateTime(c.last, workspace.timezone)}</td>
                   </tr>
                 );
               })}
