@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { ago, dateTime, money } from '@/lib/format';
 import { isOnline } from '@/lib/admin';
 
-export const metadata = { title: 'Workspaces' };
+export const metadata = { title: 'Businesses' };
 const PAGE = 25;
 const DAY = 86_400_000;
 
