@@ -64,3 +64,37 @@ export async function purgeDemos() {
   await db.user.deleteMany({ where: { email: { endsWith: '@demo.incnet.local' }, createdAt: { lt: old } } });
   revalidatePath('/admin', 'layout');
 }
+
+// ── Support sessions ───────────────────────────────────────────────
+
+/** Opens a business's dashboard as read-only platform support, for troubleshooting. Logged for the business to see. */
+export async function startSupport(fd: FormData) {
+  const admin = await requirePlatformAdmin();
+  const { SUPPORT_COOKIE, signSupport } = await import('./support');
+  const { cookies } = await import('next/headers');
+  const id = field(fd, 'id');
+  const reason = field(fd, 'reason').slice(0, 200);
+  const minutes = field(fd, 'minutes') === '60' ? 60 : 30;
+  if (reason.length < 5) redirect(`/admin/businesses/${id}?support=reason`);
+  const ws = await db.workspace.findUnique({ where: { id }, select: { id: true } });
+  if (!ws) redirect('/admin/businesses');
+  const now = Date.now();
+  (await cookies()).set(SUPPORT_COOKIE, signSupport({ adminId: admin.id, workspaceId: ws.id, reason, startedAt: now, expiresAt: now + minutes * 60_000 }), {
+    httpOnly: true, sameSite: 'lax', path: '/', maxAge: minutes * 60, secure: process.env.NODE_ENV === 'production' && !process.env.APP_URL?.startsWith('http://'),
+  });
+  await log(ws.id, admin.id, 'platform.support.start', `${admin.name} opened a read-only support session (${minutes} min): ${reason}`);
+  redirect('/dashboard');
+}
+
+export async function endSupport() {
+  const admin = await requirePlatformAdmin();
+  const { SUPPORT_COOKIE, readSupport } = await import('./support');
+  const { cookies } = await import('next/headers');
+  const s = await readSupport(admin.id);
+  (await cookies()).delete(SUPPORT_COOKIE);
+  if (s) {
+    await log(s.workspaceId, admin.id, 'platform.support.end', `${admin.name} ended the support session`);
+    redirect(`/admin/businesses/${s.workspaceId}`);
+  }
+  redirect('/admin');
+}

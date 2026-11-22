@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { db } from './db';
 import { can, PermissionError, type Permission } from './permissions';
+import { readSupport, type SupportSession } from './support';
 
 const COOKIE = 'incnet_session';
 const MAX_AGE = 60 * 60 * 24 * 30;
@@ -45,9 +46,19 @@ export const WORKSPACE_COOKIE = 'incnet_ws';
  * The signed-in user, the workspace they are working in, and their role there.
  * People in several businesses switch with the menu; the choice is remembered in a cookie.
  */
-export const requireWorkspace = cache(async () => {
+export const requireWorkspace = cache(async (): Promise<{ user: NonNullable<Awaited<ReturnType<typeof currentUser>>>; workspace: Awaited<ReturnType<typeof db.workspace.findUniqueOrThrow>>; role: string; support: SupportSession | null }> => {
   const user = await currentUser();
   if (!user) redirect('/login');
+
+  // A platform admin in a support session sees that business, read-only.
+  if (user.isAdmin) {
+    const support = await readSupport(user.id);
+    if (support) {
+      const workspace = await db.workspace.findUnique({ where: { id: support.workspaceId } });
+      if (workspace) return { user, workspace, role: 'support', support };
+    }
+  }
+
   const chosen = (await cookies()).get(WORKSPACE_COOKIE)?.value;
   const member =
     (chosen && (await db.member.findFirst({ where: { userId: user.id, workspaceId: chosen }, include: { workspace: true } }))) ||
@@ -55,7 +66,7 @@ export const requireWorkspace = cache(async () => {
   if (!member) redirect(user.isAdmin ? '/admin' : '/no-workspace');
   // A suspended business is locked out; platform admins can still look in.
   if (member.workspace.suspendedAt && !user.isAdmin) redirect('/suspended');
-  return { user, workspace: member.workspace, role: member.role };
+  return { user, workspace: member.workspace, role: member.role, support: null };
 });
 
 /** For pages: the workspace context, or the "no access" page when the role does not allow it. */
@@ -68,6 +79,7 @@ export async function requirePage(perm: Permission) {
 /** For actions: the workspace context, or a PermissionError the form shows as a message. */
 export async function requireAction(perm: Permission) {
   const ctx = await requireWorkspace();
+  if (ctx.support) throw new PermissionError('Support sessions are read-only. Ask the business to make the change, or end the session.');
   if (!can(ctx.role, perm)) throw new PermissionError();
   return ctx;
 }

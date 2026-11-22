@@ -1,70 +1,80 @@
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, Ban, CreditCard, FlaskConical, Lock, WifiOff } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Ban, FlaskConical, Lock, Rocket, WifiOff } from 'lucide-react';
 import { SingleBars } from '@/components/charts/Charts';
-import { db } from '@/lib/db';
-import { dateTime, money } from '@/lib/format';
-import { dayKey } from '@/lib/time';
-import { DEFAULT_TZ } from '@/lib/format';
 import { ONLINE_MS } from '@/lib/admin';
+import { PLANS } from '@/lib/config';
+import { db } from '@/lib/db';
+import { DEFAULT_TZ, dateTime, money } from '@/lib/format';
+import { dayKey } from '@/lib/time';
 
-export const metadata = { title: 'Overview' };
-
+export const metadata = { title: { absolute: 'Overview · incnet Console' } };
 const DAY = 86_400_000;
 
-/** Platform health at a glance: growth, money moving, and what needs attention. */
+/** SaaS health: subscriptions, growth and activation. No business's sales or customers. */
 export default async function AdminOverview() {
   const now = Date.now();
-  const d30 = new Date(now - 30 * DAY);
-  const d7 = new Date(now - 7 * DAY);
   const real = { isDemo: false };
-  const [workspaces, pro, suspended, demos, users, sites, online, activeWs, signups30, signups7, volume30, payments30, failed24, recentWs] = await Promise.all([
+  const [total, pro, suspended, demos, signups30, signups7, prev30, withRouter, routerOnline7, routersTotal, routersOnline, recent] = await Promise.all([
     db.workspace.count({ where: real }),
-    db.workspace.count({ where: { ...real, plan: 'pro' } }),
-    db.workspace.count({ where: { suspendedAt: { not: null } } }),
+    db.workspace.count({ where: { ...real, plan: 'pro', suspendedAt: null } }),
+    db.workspace.count({ where: { ...real, suspendedAt: { not: null } } }),
     db.workspace.count({ where: { isDemo: true } }),
-    db.user.count({ where: { NOT: { email: { endsWith: '@demo.incnet.local' } } } }),
+    db.workspace.findMany({ where: { ...real, createdAt: { gte: new Date(now - 30 * DAY) } }, select: { createdAt: true } }),
+    db.workspace.count({ where: { ...real, createdAt: { gte: new Date(now - 7 * DAY) } } }),
+    db.workspace.count({ where: { ...real, createdAt: { gte: new Date(now - 60 * DAY), lt: new Date(now - 30 * DAY) } } }),
+    db.workspace.count({ where: { ...real, sites: { some: { kind: { not: 'simulated' } } } } }),
+    db.workspace.count({ where: { ...real, sites: { some: { kind: { not: 'simulated' }, lastSeenAt: { gte: new Date(now - 7 * DAY) } } } } }),
     db.site.count({ where: { kind: { not: 'simulated' }, workspace: real } }),
     db.site.count({ where: { kind: { not: 'simulated' }, workspace: real, lastSeenAt: { gte: new Date(now - ONLINE_MS) } } }),
-    db.workspace.count({ where: { ...real, payments: { some: { status: 'completed', completedAt: { gte: d7 } } } } }),
-    db.workspace.findMany({ where: { ...real, createdAt: { gte: d30 } }, select: { createdAt: true } }),
-    db.workspace.count({ where: { ...real, createdAt: { gte: d7 } } }),
-    db.payment.findMany({ where: { status: 'completed', completedAt: { gte: d30 }, workspace: real }, select: { amount: true, completedAt: true } }),
-    db.payment.count({ where: { createdAt: { gte: d30 }, workspace: real } }),
-    db.payment.count({ where: { status: { in: ['failed', 'needs_review'] }, createdAt: { gte: new Date(now - DAY) }, workspace: real } }),
     db.workspace.findMany({ where: real, orderBy: { createdAt: 'desc' }, take: 6, include: { members: { where: { role: 'owner' }, take: 1, include: { user: { select: { email: true } } } } } }),
   ]);
-  const offline = sites - online;
-  const totalVolume = volume30.reduce((s, p) => s + p.amount, 0);
-  const completed30 = volume30.length;
+  const mrr = pro * PLANS.pro.price;
+  const free = total - pro - suspended;
+  const growth = prev30 ? Math.round(((signups30.length - prev30) / prev30) * 100) : null;
 
   const days = Array.from({ length: 30 }, (_, i) => new Date(now - (29 - i) * DAY));
-  const signupSeries = days.map((d) => ({ label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: DEFAULT_TZ }), key: dayKey(DEFAULT_TZ, d), value: 0 }));
-  const volSeries = signupSeries.map((d) => ({ ...d, value: 0 }));
-  const idx = new Map(signupSeries.map((d, i) => [d.key, i]));
-  for (const w of signups30) { const i = idx.get(dayKey(DEFAULT_TZ, w.createdAt)); if (i !== undefined) signupSeries[i].value += 1; }
-  for (const p of volume30) { const i = idx.get(dayKey(DEFAULT_TZ, p.completedAt!)); if (i !== undefined) volSeries[i].value += p.amount; }
+  const series = days.map((d) => ({ label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: DEFAULT_TZ }), key: dayKey(DEFAULT_TZ, d), value: 0 }));
+  const idx = new Map(series.map((d, i) => [d.key, i]));
+  for (const w of signups30) { const i = idx.get(dayKey(DEFAULT_TZ, w.createdAt)); if (i !== undefined) series[i].value += 1; }
 
+  const funnel = [
+    { label: 'Signed up', n: total },
+    { label: 'Added a router', n: withRouter },
+    { label: 'Router active this week', n: routerOnline7 },
+    { label: 'On the Business plan', n: pro },
+  ];
   const attention = [
-    { n: offline, icon: WifiOff, text: 'routers offline right now', href: '/admin/system' },
-    { n: failed24, icon: CreditCard, text: 'failed or flagged payments in the last 24 hours', href: '/admin/system' },
+    { n: routersTotal - routersOnline, icon: WifiOff, text: 'routers offline right now', href: '/admin/routers?state=offline' },
+    { n: total - withRouter, icon: Rocket, text: 'businesses that never added a router', href: '/admin/businesses?setup=none' },
     { n: suspended, icon: Ban, text: 'suspended businesses', href: '/admin/businesses?status=suspended' },
     { n: demos, icon: FlaskConical, text: 'demo workspaces (cleaned up after 24 hours)', href: '/admin/system' },
   ];
 
   return (
     <>
-      <div className="page-head"><div><h1>Platform overview</h1><p>Growth, money moving and what needs attention. Demo workspaces are left out of the numbers.</p></div></div>
-      <p className="privacy-note"><Lock size={14} /> The console is for running the platform: accounts, plans, router health and setup issues. Each business&apos;s sales and customers stay theirs; you only see totals.</p>
+      <div className="page-head"><div><h1>Overview</h1><p>Subscriptions, growth and activation across the platform.</p></div></div>
+      <p className="privacy-note"><Lock size={14} /> Business data stays with each business. To troubleshoot, open a business and start a read-only support session; it is logged for them to see.</p>
+
       <div className="grid grid-4" style={{ marginBottom: 16 }}>
-        <div className="card card-pad kpi"><small>Businesses</small><strong>{workspaces.toLocaleString('en-US')}</strong><span className="muted small">+{signups7} this week · {pro} on Business</span></div>
-        <div className="card card-pad kpi"><small>Active this week</small><strong>{activeWs.toLocaleString('en-US')}</strong><span className="muted small">made a sale in the last 7 days</span></div>
-        <div className="card card-pad kpi"><small>Routers online</small><strong>{online} <span className="muted" style={{ fontSize: 18 }}>/ {sites}</span></strong><span className="muted small">{users} users in total</span></div>
-        <div className="card card-pad kpi"><small>Mobile money, 30 days</small><strong>{money(totalVolume)}</strong><span className="muted small">{completed30} of {payments30} payments completed</span></div>
+        <div className="card card-pad kpi"><small>Monthly recurring revenue</small><strong>{money(mrr)}</strong><span className="muted small">{money(mrr * 12)} a year · {pro} paying</span></div>
+        <div className="card card-pad kpi"><small>Businesses</small><strong>{total.toLocaleString('en-US')}</strong><span className="muted small">+{signups7} this week{growth !== null ? ` · ${growth >= 0 ? '▲' : '▼'} ${Math.abs(growth)}% sign-ups vs last month` : ''}</span></div>
+        <div className="card card-pad kpi"><small>Activation</small><strong>{total ? Math.round((routerOnline7 / total) * 100) : 0}%</strong><span className="muted small">have a router active this week</span></div>
+        <div className="card card-pad kpi"><small>Paid conversion</small><strong>{total ? Math.round((pro / total) * 100) : 0}%</strong><span className="muted small">{free} on Starter · {suspended} suspended</span></div>
       </div>
 
-      <div className="grid grid-2" style={{ marginBottom: 16, alignItems: 'start' }}>
-        <section className="card"><div className="card-head"><h2>New businesses, 30 days</h2><span className="muted small">{signups30.length} sign-ups</span></div><div className="card-pad"><SingleBars data={signupSeries} unit="sign-ups" /></div></section>
-        <section className="card"><div className="card-head"><h2>Mobile money volume, 30 days</h2><span className="muted small">{money(totalVolume)}</span></div><div className="card-pad"><SingleBars data={volSeries} unit="" money /></div></section>
+      <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.5fr) minmax(280px, 1fr)', marginBottom: 16, alignItems: 'start' }}>
+        <section className="card"><div className="card-head"><h2>New businesses, 30 days</h2><span className="muted small">{signups30.length} sign-ups</span></div><div className="card-pad"><SingleBars data={series} unit="sign-ups" /></div></section>
+        <section className="card">
+          <div className="card-head"><h2>Activation funnel</h2></div>
+          <div className="card-pad rank">
+            {funnel.map((f) => (
+              <div key={f.label} className="rank-row">
+                <div className="rank-top"><span>{f.label}</span><span><b>{f.n.toLocaleString('en-US')}</b> <em>{total ? Math.round((f.n / total) * 100) : 0}%</em></span></div>
+                <div className="rank-track"><div style={{ width: `${total ? (f.n / total) * 100 : 0}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       <div className="grid grid-2" style={{ alignItems: 'start' }}>
@@ -78,9 +88,9 @@ export default async function AdminOverview() {
         </section>
         <section className="card">
           <div className="card-head"><h2>Newest businesses</h2><Link className="btn btn-ghost btn-sm" href="/admin/businesses">All <ArrowRight size={14} /></Link></div>
-          {recentWs.length === 0 ? <p className="empty">No businesses yet.</p> : (
+          {recent.length === 0 ? <p className="empty">No businesses yet.</p> : (
             <table><tbody>
-              {recentWs.map((w) => (
+              {recent.map((w) => (
                 <tr key={w.id}>
                   <td><Link href={`/admin/businesses/${w.id}`}><strong>{w.name}</strong></Link><div className="muted small">{w.members[0]?.user.email ?? '—'}</div></td>
                   <td><span className={`badge ${w.plan === 'pro' ? 'accent' : ''}`}>{w.plan === 'pro' ? 'Business' : 'Starter'}</span></td>

@@ -10,11 +10,13 @@ import { db } from '@/lib/db';
 import { getT } from '@/lib/lang';
 import { ROLE_INFO, type Role } from '@/lib/permissions';
 import { switchWorkspace } from '@/lib/team-actions';
+import { endSupport } from '@/lib/admin-actions';
+import { LifeBuoy } from 'lucide-react';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, workspace, role } = await requireWorkspace();
+  const { user, workspace, role, support } = await requireWorkspace();
   const t = await getT();
-  const memberships = await db.member.findMany({ where: { userId: user.id }, include: { workspace: { select: { id: true, name: true } } }, orderBy: { createdAt: 'asc' } });
+  const memberships = support ? [] : await db.member.findMany({ where: { userId: user.id }, include: { workspace: { select: { id: true, name: true } } }, orderBy: { createdAt: 'asc' } });
   return (
     <div className="shell">
       <Fonts />
@@ -30,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <button className="btn btn-ghost btn-sm">{t('nav.switch')}</button>
             </form>
           ) : <div style={{ fontWeight: 600 }}>{workspace.name}</div>}
-          <div className="muted small" style={{ wordBreak: 'break-all' }}>{workspace.isDemo ? t('nav.demo') : user.email}</div>
+          <div className="muted small" style={{ wordBreak: 'break-all' }}>{support ? 'Platform support (read-only)' : workspace.isDemo ? t('nav.demo') : user.email}</div>
           <div className="row small" style={{ marginTop: 6, gap: 6 }}>
             <span className="badge">{ROLE_INFO[role as Role]?.label ?? role}</span>
             {IS_CLOUD && <span className="badge accent">{PLANS[workspace.plan as keyof typeof PLANS]?.name ?? 'Starter'}</span>}
@@ -41,7 +43,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </div>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main">
+        {support && (
+          <div className="support-bar" role="status">
+            <LifeBuoy size={18} />
+            <div><strong>Support session · {workspace.name}</strong><span>Read-only, ends in {Math.max(1, Math.round((support.expiresAt - Date.now()) / 60_000))} min. Reason: {support.reason}. The business can see this session in their activity log.</span></div>
+            <form action={endSupport}><button className="btn btn-sm" type="submit">End session</button></form>
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

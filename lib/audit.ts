@@ -27,4 +27,6 @@ export const AUDIT_LABELS: Record<string, string> = {
   'platform.plan': 'Platform changed the plan',
   'platform.suspend': 'Platform suspended the business',
   'platform.resume': 'Platform lifted the suspension',
+  'platform.support.start': 'Platform support opened your account',
+  'platform.support.end': 'Platform support session ended',
 };
