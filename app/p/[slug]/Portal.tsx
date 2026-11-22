@@ -37,21 +37,27 @@ const T = {
 
 const STORE = 'incnet-last-code';
 
-/** Mobile money networks. Official logos go in public/networks/; until a file is there, the name shows instead. */
-const NETWORKS = [
-  { id: 'mpesa', name: 'M-Pesa', cls: 'n-mpesa' },
-  { id: 'mixx', name: 'Mixx by Yas', cls: 'n-mixx' },
-  { id: 'airtel', name: 'Airtel Money', cls: 'n-airtel' },
-  { id: 'halopesa', name: 'HaloPesa', cls: 'n-halo' },
+/**
+ * Mobile money networks, with their official logos (public/networks/, see README there).
+ * The name is always shown next to the logo, so each network is clear even when a logo is just a mark.
+ */
+const NETWORKS: { id: string; name: string; logo: string; wide?: boolean }[] = [
+  { id: 'mpesa', name: 'M-Pesa', logo: '/networks/mpesa.png' },
+  { id: 'mixx', name: 'Mixx by Yas', logo: '/networks/mixx.svg', wide: true },
+  { id: 'airtel', name: 'Airtel Money', logo: '/networks/airtel.png' },
+  { id: 'halopesa', name: 'HaloPesa', logo: '/networks/halopesa.png' },
 ];
 
 function NetworkLogos({ label }: { label: string }) {
   const [missing, setMissing] = useState<Record<string, boolean>>({});
   return (
     <div className="p-nets" aria-label={label}>
-      {NETWORKS.map((n) => missing[n.id]
-        ? <span key={n.id} className={n.cls}>{n.name}</span>
-        : <img key={n.id} className="p-net-logo" src={`/networks/${n.id}.svg`} alt={n.name} title={n.name} onError={() => setMissing((m) => ({ ...m, [n.id]: true }))} />)}
+      {NETWORKS.map((n) => (
+        <span key={n.id} className="p-net">
+          {!missing[n.id] && <img src={n.logo} alt="" className={n.wide ? 'wide' : undefined} onError={() => setMissing((m) => ({ ...m, [n.id]: true }))} />}
+          {n.name}
+        </span>
+      ))}
     </div>
   );
 }
@@ -330,10 +336,10 @@ const PORTAL_CSS = `
 .p-stack{display:grid;gap:10px}
 .p-code-input{text-align:center;font-size:22px!important;letter-spacing:.18em!important;padding:15px!important}
 .p-pop{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--accent);color:#fff;font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.02em;vertical-align:2px}
-.p-nets{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
-.p-nets span{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid var(--line);background:var(--card);white-space:nowrap}
-.p-net-logo{height:26px;width:auto;max-width:84px;object-fit:contain;padding:3px 6px;border-radius:7px;background:#fff;border:1px solid var(--line)}
-.n-mpesa{color:#d0312d}.n-mixx{color:#1d4ed8}.n-airtel{color:#e11d2b}.n-halo{color:#ea7a12}
+.p-nets{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.p-net{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:12.5px;font-weight:600;color:var(--ink);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-net img{width:26px;height:26px;flex:none;object-fit:contain;border-radius:6px;background:#fff;padding:1px}
+.p-net img.wide{width:52px;padding:2px 3px}
 .p-secure{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12px;margin:0;text-align:center}
 .p-secure svg{color:#1f9d55;flex:none}
 .p-track{list-style:none;display:flex;justify-content:space-between;gap:6px;padding:0;margin:0 0 20px;font-size:12px;color:var(--muted)}
