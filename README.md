@@ -39,13 +39,16 @@ Phone ──Wi-Fi──> Access point ──> MikroTik hotspot ──(login page
 
 ## Self-hosting
 
-One command on a Raspberry Pi or a VPS. It sets up Docker, Postgres and automatic HTTPS:
+Run incnet wherever suits you:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/depriver-tech/incnet/main/scripts/install.sh | sudo DOMAIN=wifi.example.com bash
-```
+| Where | How | Guide |
+|---|---|---|
+| **Vercel** | [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdepriver-tech%2Fincnet&project-name=incnet&repository-name=incnet&env=APP_SECRET&envDescription=A%20long%20random%20string%20%2832%2B%20characters%29%20that%20signs%20sign-ins%20and%20encrypts%20payment%20keys&envLink=https%3A%2F%2Fgithub.com%2Fdepriver-tech%2Fincnet%2Fblob%2Fmain%2Fdocs%2Fvercel.md) plus a free Neon database | [docs/vercel.md](docs/vercel.md) |
+| **VPS or Raspberry Pi** | `curl -fsSL https://raw.githubusercontent.com/depriver-tech/incnet/main/scripts/install.sh \| sudo DOMAIN=wifi.example.com bash` | [docs/self-hosting.md](docs/self-hosting.md) |
+| **Shared hosting** (cPanel, Plesk, Hostinger) | Upload `incnet-node.zip` from [Releases](https://github.com/depriver-tech/incnet/releases/latest) and set the startup file to `app.js` | [docs/self-hosting.md](docs/self-hosting.md#shared-hosting-cpanel-plesk-hostinger-directadmin) |
+| **Docker** | `docker compose --profile https up -d` | below |
 
-Shared hosting (cPanel) and manual setups are covered in [docs/self-hosting.md](docs/self-hosting.md). The steps below show the manual Docker route.
+The manual Docker route is below.
 
 You need:
 

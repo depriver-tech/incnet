@@ -1,21 +1,21 @@
 import Link from 'next/link';
 import { ArrowRight, Check, Cpu, FlaskConical, GitBranch, Globe, Palette, Printer, Router, ShieldCheck, Smartphone, Terminal, Wifi, Zap } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
-import { IS_CLOUD, PLANS, SOURCE_URL } from '@/lib/config';
+import { IS_CLOUD, PLANS, RELEASES_URL, SOURCE_URL, VERCEL_DEPLOY_URL } from '@/lib/config';
+import { HostTabs } from '@/components/landing/HostTabs';
 import { startDemo } from '@/lib/demo';
 import { money } from '@/lib/format';
 import { HeroDashboard } from '@/components/landing/HeroDashboard';
 import { Portal } from './p/[slug]/Portal';
 
 const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Syne+Mono&display=swap';
-const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/depriver-tech/incnet/main/scripts/install.sh | sudo DOMAIN=wifi.example.com bash';
 
 const FAQ = [
   ['Which routers work?', 'Any MikroTik on RouterOS 7, a Raspberry Pi (3B+, 4 or 5), or any router running OpenWrt. Access points of any brand plug in behind them. No hardware yet? Start with the built-in simulator.'],
   ['Do I need a public IP, VPN or port forwarding?', 'No. The router calls incnet every few seconds over HTTPS, so it works behind any internet provider, including mobile data links.'],
   ['How do customers pay?', 'They pick a package on the Wi-Fi page, type their number and confirm with their PIN on M-Pesa, Mixx by Yas, Airtel Money or Halotel. They are online seconds later, with no staff involved. Printed vouchers work too.'],
   ['Where does the money go?', 'Straight to your own payment account (incpesa or Snippe). incnet never holds your money.'],
-  ['Can I run it on my own server?', 'Yes. incnet is open source under AGPL-3.0. One command installs it on a Raspberry Pi or a VPS with automatic HTTPS, and there is a guide for shared hosting.'],
+  ['Can I run it on my own server?', 'Yes. incnet is open source under AGPL-3.0. Deploy it to Vercel in one click, install it on a VPS or Raspberry Pi with one command, or upload a ready-made zip to shared hosting (cPanel, Plesk, Hostinger).'],
   ['What happens if the internet or incnet goes down?', 'Customers already online stay online until their time runs out: the router enforces the limits itself. When the link comes back, the router catches up automatically.'],
 ];
 
@@ -31,7 +31,8 @@ export default async function Home() {
           <div className="lp-links">
             <a href="#features">Features</a>
             <a href="#hardware">Hardware</a>
-            <a href="#pricing">{IS_CLOUD ? 'Pricing' : 'Hosting'}</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#host">Self-host</a>
             <a href={SOURCE_URL} target="_blank" rel="noreferrer">Docs</a>
           </div>
           <div className="row" style={{ gap: 8 }}>
@@ -199,15 +200,28 @@ export default async function Home() {
             <div className="card lp-plan">
               <h3>Self-hosted</h3>
               <div className="lp-price">Free</div>
-              <p>Open source, no limits. Raspberry Pi, VPS or shared hosting.</p>
-              <div className="lp-code"><code>{INSTALL}</code></div>
-              <a className="btn btn-ghost" href={`${SOURCE_URL}/blob/main/docs/self-hosting.md`} target="_blank" rel="noreferrer"><GitBranch size={16} /> Self-hosting guide</a>
+              <p>Open source, no limits. Vercel, VPS, Raspberry Pi, shared hosting or Docker.</p>
+              <ul className="lp-ticks">
+                <li><Check size={16} /> Everything in Business</li>
+                <li><Check size={16} /> Unlimited routers</li>
+                <li><Check size={16} /> Your server, your data</li>
+              </ul>
+              <a className="btn btn-ghost" href="#host"><GitBranch size={16} /> See hosting options</a>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="lp-section lp-alt">
+      <section className="lp-section lp-alt" id="host">
+        <div className="wrap">
+          <p className="lp-eyebrow">HOST IT ANYWHERE</p>
+          <h2>Run it your way.</h2>
+          <p className="lp-sub">Open source under AGPL-3.0. Pick what suits you, and move later if you outgrow it.</p>
+          <HostTabs deployUrl={VERCEL_DEPLOY_URL} releasesUrl={RELEASES_URL} docsUrl={`${SOURCE_URL}/blob/main/docs/self-hosting.md`} />
+        </div>
+      </section>
+
+      <section className="lp-section">
         <div className="wrap lp-faq-wrap">
           <div>
             <p className="lp-eyebrow">QUESTIONS</p>

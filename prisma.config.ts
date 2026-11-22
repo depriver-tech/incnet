@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
+import { directUrl } from './lib/db-url';
 
 /** Adds ?schema=… when DATABASE_SCHEMA is set, so db push only touches incnet's own schema. */
 function withSchema(url?: string) {
@@ -13,5 +14,5 @@ function withSchema(url?: string) {
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   // DIRECT_URL (non-pooled) for schema changes when the runtime URL goes through a pooler.
-  datasource: { url: withSchema(process.env.DIRECT_URL || process.env.DATABASE_URL) },
+  datasource: { url: withSchema(directUrl() || undefined) },
 });

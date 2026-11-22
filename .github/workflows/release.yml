@@ -1,0 +1,31 @@
+# Builds incnet-node.zip (for shared hosting) and attaches it to the GitHub release.
+# Runs when a version tag is pushed (git tag v0.2.0 && git push --tags), or by hand from the Actions tab.
+name: Release package
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: bash scripts/package-node.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: incnet-node
+          path: dist/incnet-node.zip
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/incnet-node.zip

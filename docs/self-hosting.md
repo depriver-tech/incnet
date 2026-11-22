@@ -4,7 +4,8 @@ The incnet server runs the dashboard, the Wi-Fi pages and the router check-ins. 
 
 - **A Raspberry Pi** (4 or 5, 64-bit OS) at home or in the shop, with a domain pointing at it
 - **A VPS** from any provider, with 1 GB RAM or more
-- **Shared hosting** with Node.js support (cPanel or similar), using a hosted Postgres database
+- **Shared hosting** with Node.js support (cPanel, Plesk, Hostinger, DirectAdmin), using a hosted Postgres database
+- **Vercel**, in one click with a free Neon database
 
 Routers and payment providers must be able to reach your server over **HTTPS with a public certificate**.
 
@@ -33,39 +34,35 @@ cd /opt/incnet && docker compose logs -f app
 
 **Behind a home router?** Forward ports 80 and 443 to the Pi. If your ISP doesn't give you a public IP, use a VPS or incnet Cloud instead.
 
-## Shared hosting (cPanel "Setup Node.js App")
+## Shared hosting (cPanel, Plesk, Hostinger, DirectAdmin)
 
-Shared hosts usually offer MySQL only. incnet needs **PostgreSQL**, so create a free Postgres database at Supabase or Neon and copy its connection string.
+Any shared host with **Node.js 20+** works. Look for "Setup Node.js App", "Node.js" or "Application manager" in your control panel. PHP-only hosting can't run incnet.
 
-1. Build incnet on your computer. You need Node 22 or newer.
-
-   ```bash
-   git clone https://github.com/depriver-tech/incnet.git && cd incnet
-   npm install
-   DATABASE_URL="<your postgres url>" npx prisma db push
-   npm run build
-   ```
-
-2. Upload these to a folder on the host, for example `~/incnet`:
-   - The contents of `.next/standalone/`
-   - `.next/static`, uploaded to `.next/static` in that folder
-   - The `public/` folder
-
-3. In cPanel → **Setup Node.js App**, create an app:
+1. **Get a PostgreSQL database.** Most shared hosts offer only MySQL. Create a free Postgres database at Supabase or Neon and copy its connection string.
+2. **Download `incnet-node.zip`** from the [latest release](https://github.com/depriver-tech/incnet/releases/latest). Or build it yourself with `bash scripts/package-node.sh`.
+3. **Upload and unzip it** in your hosting account, for example to `~/incnet`, using the File Manager.
+4. **Create the Node.js app** with these settings:
    - Node 20 or newer
    - Application root: `incnet`
-   - Startup file: `server.js`
+   - Application URL: your domain
+   - **Startup file: `app.js`**
+5. **Add the settings** as environment variables in the same screen. You can also copy `.env.example` to `.env` and fill it in.
+   - `DATABASE_URL`: your Postgres connection string
+   - `APP_URL`: your https address
+   - `APP_SECRET`: a random string of 32 or more characters
+6. **Start the app**, then open your domain and create the first account.
 
-4. Add the environment variables:
-   - `DATABASE_URL`
-   - `APP_URL` (your https address)
-   - `APP_SECRET` (`openssl rand -base64 48`)
+On first start, `app.js` creates the tables itself from `schema.sql`, so you don't need to run any commands. Make sure the domain has SSL; most hosts offer free AutoSSL.
 
-   Then click **Restart**.
+**To update:** upload the new zip over the old files and restart the app. If a release changes the database, its notes say so. In that case, run `DATABASE_URL=… npx prisma db push` once from a computer with Node installed.
 
-5. Make sure the domain has SSL. Most hosts offer free AutoSSL.
+On busy shared servers, set `ROUTER_SYNC_SECONDS=8` to stay within your host's limits.
 
-Routers check in every few seconds. On busy shared hosting, raise `ROUTER_SYNC_SECONDS` to 8–10 to stay within your host's limits.
+## Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdepriver-tech%2Fincnet&project-name=incnet&repository-name=incnet&env=APP_SECRET&envDescription=A%20long%20random%20string%20%2832%2B%20characters%29%20that%20signs%20sign-ins%20and%20encrypts%20payment%20keys&envLink=https%3A%2F%2Fgithub.com%2Fdepriver-tech%2Fincnet%2Fblob%2Fmain%2Fdocs%2Fvercel.md)
+
+See [vercel.md](vercel.md). It's one click plus a free Neon database.
 
 ## Manual setup
 
