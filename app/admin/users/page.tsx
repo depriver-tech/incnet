@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { dateTime } from '@/lib/format';
 import { ROLE_INFO, type Role } from '@/lib/permissions';
 
-export const metadata = { title: 'Users · Platform' };
+export const metadata = { title: 'Users' };
 const PAGE = 30;
 
 export default async function AdminUsers({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -24,14 +24,15 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
     db.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * PAGE, take: PAGE, include: { memberships: { include: { workspace: { select: { id: true, name: true } } } } } }),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE));
-  const link = (extra: Record<string, string>) => `/dashboard/admin/users?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).filter(([, v]) => v) as [string, string][]), ...extra })}`;
+  const link = (extra: Record<string, string>) => `/admin/users?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).filter(([, v]) => v) as [string, string][]), ...extra })}`;
   return (
     <>
+      <div className="page-head"><div><h1>Users</h1><p>Everyone with an account, and who has super admin access.</p></div></div>
       <form className="card report-filters" method="get">
         <label>Search<input name="q" defaultValue={search} placeholder="Name or email" style={{ minWidth: 240 }} /></label>
         <label>Show<select name="only" defaultValue={only}><option value="">Everyone</option><option value="admins">Platform admins</option></select></label>
         <button className="btn btn-sm">Apply</button>
-        <Link className="btn btn-ghost btn-sm" href="/dashboard/admin/users">Reset</Link>
+        <Link className="btn btn-ghost btn-sm" href="/admin/users">Reset</Link>
       </form>
       <section className="card">
         <div className="card-head"><h2>{total.toLocaleString('en-US')} {total === 1 ? 'user' : 'users'}</h2><span className="muted small">Platform admins can open this console and see every business.</span></div>
@@ -41,7 +42,7 @@ export default async function AdminUsers({ searchParams }: { searchParams: Promi
             {users.map((u) => (
               <tr key={u.id}>
                 <td><strong>{u.name}</strong>{u.id === me.id && <span className="muted small"> (you)</span>}<div className="muted small">{u.email}</div></td>
-                <td className="small">{u.memberships.length === 0 ? <span className="muted">None</span> : u.memberships.map((m) => <div key={m.id}><Link className="accent" href={`/dashboard/admin/workspaces/${m.workspace.id}`}>{m.workspace.name}</Link> <span className="muted">· {ROLE_INFO[m.role as Role]?.label ?? m.role}</span></div>)}</td>
+                <td className="small">{u.memberships.length === 0 ? <span className="muted">None</span> : u.memberships.map((m) => <div key={m.id}><Link className="accent" href={`/admin/businesses/${m.workspace.id}`}>{m.workspace.name}</Link> <span className="muted">· {ROLE_INFO[m.role as Role]?.label ?? m.role}</span></div>)}</td>
                 <td className="muted small">{dateTime(u.createdAt)}</td>
                 <td>
                   {u.isAdmin && <span className="badge accent" style={{ marginRight: 8 }}>Admin</span>}

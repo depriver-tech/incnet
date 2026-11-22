@@ -11,7 +11,7 @@ export const HTML_LANG: Record<Lang, string> = { en: 'en', sw: 'sw-TZ' };
 const en = {
   // Navigation
   'nav.overview': 'Overview', 'nav.reports': 'Reports', 'nav.sales': 'Sales', 'nav.customers': 'Customers', 'nav.vouchers': 'Vouchers',
-  'nav.packages': 'Packages', 'nav.routers': 'Routers', 'nav.portal': 'Wi-Fi page', 'nav.team': 'Team', 'nav.settings': 'Settings', 'nav.platform': 'Platform',
+  'nav.packages': 'Packages', 'nav.routers': 'Routers', 'nav.portal': 'Wi-Fi page', 'nav.team': 'Team', 'nav.settings': 'Settings', 'nav.platform': 'Platform console',
   'nav.signout': 'Sign out', 'nav.switch': 'Switch business', 'nav.demo': 'Demo account · resets daily', 'lang.switch': 'Kiswahili',
 
   // Common
@@ -74,7 +74,7 @@ type Dict = Record<keyof typeof en, string>;
 
 const sw: Dict = {
   'nav.overview': 'Muhtasari', 'nav.reports': 'Ripoti', 'nav.sales': 'Mauzo', 'nav.customers': 'Wateja', 'nav.vouchers': 'Vocha',
-  'nav.packages': 'Vifurushi', 'nav.routers': 'Ruta', 'nav.portal': 'Ukurasa wa Wi-Fi', 'nav.team': 'Timu', 'nav.settings': 'Mipangilio', 'nav.platform': 'Jukwaa',
+  'nav.packages': 'Vifurushi', 'nav.routers': 'Ruta', 'nav.portal': 'Ukurasa wa Wi-Fi', 'nav.team': 'Timu', 'nav.settings': 'Mipangilio', 'nav.platform': 'Konsoli ya jukwaa',
   'nav.signout': 'Toka', 'nav.switch': 'Badili biashara', 'nav.demo': 'Akaunti ya majaribio · inafutwa kila siku', 'lang.switch': 'English',
 
   'common.apply': 'Tumia', 'common.reset': 'Futa vichujio', 'common.export': 'Pakua CSV', 'common.search': 'Tafuta', 'common.all': 'Zote',

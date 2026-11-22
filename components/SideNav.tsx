@@ -29,7 +29,7 @@ export function SideNav({ role, admin }: { role: string; admin: boolean }) {
         const on = exact ? path === href : path.startsWith(href);
         return <Link key={href} href={href} className={`nav${on ? ' on' : ''}`}><Icon size={17} /> {t(key)}</Link>;
       })}
-      {admin && <Link href="/dashboard/admin" className={`nav${path.startsWith('/dashboard/admin') ? ' on' : ''}`}><Shield size={17} /> {t('nav.platform')}</Link>}
+      {admin && <Link href="/admin" className={`nav${path.startsWith('/admin') ? ' on' : ''}`}><Shield size={17} /> {t('nav.platform')}</Link>}
     </>
   );
 }

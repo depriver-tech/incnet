@@ -7,7 +7,7 @@ import { db } from '@/lib/db';
 import { ago, dateTime, money } from '@/lib/format';
 import { maskPhone } from '@/lib/phone';
 
-export const metadata = { title: 'System · Platform' };
+export const metadata = { title: 'System' };
 const DAY = 86_400_000;
 
 /** Is the platform healthy? Configuration checks, routers that went quiet, payments that went wrong. */
@@ -33,6 +33,7 @@ export default async function AdminSystem() {
   const provName: Record<string, string> = { none: 'Vouchers only', incpesa: 'incpesa', snippe: 'Snippe', test: 'Test mode' };
   return (
     <>
+      <div className="page-head"><div><h1>System</h1><p>Health checks, routers that went quiet, payments that went wrong, and console actions.</p></div></div>
       <div className="grid grid-2" style={{ marginBottom: 16, alignItems: 'start' }}>
         <section className="card">
           <div className="card-head"><h2>Health checks</h2></div>
@@ -56,7 +57,7 @@ export default async function AdminSystem() {
         {offline.length === 0 ? <p className="empty">Every router is online.</p> : (
           <div className="table-wrap"><table>
             <thead><tr><th>Router</th><th>Business</th><th>Type</th><th>Last check-in</th></tr></thead>
-            <tbody>{offline.map((s) => <tr key={s.id}><td><strong>{s.name}</strong></td><td><Link className="accent" href={`/dashboard/admin/workspaces/${s.workspace.id}`}>{s.workspace.name}</Link></td><td className="muted">{s.kind}</td><td className="muted small">{s.lastSeenAt ? ago(s.lastSeenAt) : 'never (not set up yet)'}</td></tr>)}</tbody>
+            <tbody>{offline.map((s) => <tr key={s.id}><td><strong>{s.name}</strong></td><td><Link className="accent" href={`/admin/businesses/${s.workspace.id}`}>{s.workspace.name}</Link></td><td className="muted">{s.kind}</td><td className="muted small">{s.lastSeenAt ? ago(s.lastSeenAt) : 'never (not set up yet)'}</td></tr>)}</tbody>
           </table></div>
         )}
       </section>
@@ -65,13 +66,13 @@ export default async function AdminSystem() {
         <section className="card">
           <div className="card-head"><h2>Failed payments, 24 hours</h2><span className="muted small">{failed.length}</span></div>
           {failed.length === 0 ? <p className="empty">None.</p> : (
-            <table><tbody>{failed.map((p) => <tr key={p.id}><td><strong>{money(p.amount)}</strong> <span className="muted small">{maskPhone(p.phone)}</span><div className="muted small">{p.failureReason ?? p.status}</div></td><td className="small"><Link className="accent" href={`/dashboard/admin/workspaces/${p.workspace.id}`}>{p.workspace.name}</Link><div className="muted">{dateTime(p.createdAt, p.workspace.timezone)}</div></td></tr>)}</tbody></table>
+            <table><tbody>{failed.map((p) => <tr key={p.id}><td><strong>{money(p.amount)}</strong> <span className="muted small">{maskPhone(p.phone)}</span><div className="muted small">{p.failureReason ?? p.status}</div></td><td className="small"><Link className="accent" href={`/admin/businesses/${p.workspace.id}`}>{p.workspace.name}</Link><div className="muted">{dateTime(p.createdAt, p.workspace.timezone)}</div></td></tr>)}</tbody></table>
           )}
         </section>
         <section className="card">
           <div className="card-head"><h2>Platform actions</h2></div>
           {platformLog.length === 0 ? <p className="empty">No console actions yet.</p> : (
-            <table><tbody>{platformLog.map((l) => <tr key={l.id}><td><strong>{l.detail.replace('[Platform] ', '')}</strong><div className="muted small">{l.user?.name ?? '—'} · <Link className="accent" href={`/dashboard/admin/workspaces/${l.workspace.id}`}>{l.workspace.name}</Link></div></td><td className="muted small" style={{ textAlign: 'right' }}>{ago(l.createdAt)}</td></tr>)}</tbody></table>
+            <table><tbody>{platformLog.map((l) => <tr key={l.id}><td><strong>{l.detail.replace('[Platform] ', '')}</strong><div className="muted small">{l.user?.name ?? '—'} · <Link className="accent" href={`/admin/businesses/${l.workspace.id}`}>{l.workspace.name}</Link></div></td><td className="muted small" style={{ textAlign: 'right' }}>{ago(l.createdAt)}</td></tr>)}</tbody></table>
           )}
         </section>
       </div>

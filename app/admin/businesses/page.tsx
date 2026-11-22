@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { ago, dateTime, money } from '@/lib/format';
 import { isOnline } from '@/lib/admin';
 
-export const metadata = { title: 'Workspaces · Platform' };
+export const metadata = { title: 'Workspaces' };
 const PAGE = 25;
 const DAY = 86_400_000;
 
@@ -41,10 +41,11 @@ export default async function AdminWorkspaces({ searchParams }: { searchParams: 
   let list = rows;
   if (sort === 'volume') list = [...rows].sort((a, b) => (volume.get(b.id) ?? 0) - (volume.get(a.id) ?? 0)).slice((page - 1) * PAGE, page * PAGE);
   const pages = Math.max(1, Math.ceil(total / PAGE));
-  const link = (extra: Record<string, string>) => `/dashboard/admin/workspaces?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).filter(([, v]) => v) as [string, string][]), ...extra })}`;
+  const link = (extra: Record<string, string>) => `/admin/businesses?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).filter(([, v]) => v) as [string, string][]), ...extra })}`;
 
   return (
     <>
+      <div className="page-head"><div><h1>Businesses</h1><p>Every business on the platform. Search, filter, and open one to manage it.</p></div></div>
       {q.deleted && <p className="notice" style={{ marginBottom: 16 }}>The business and all its data were deleted.</p>}
       <form className="card report-filters" method="get">
         <label>Search<input name="q" defaultValue={search} placeholder="Business or owner email" style={{ minWidth: 240 }} /></label>
@@ -52,7 +53,7 @@ export default async function AdminWorkspaces({ searchParams }: { searchParams: 
         <label>Plan<select name="plan" defaultValue={plan}><option value="">All plans</option><option value="free">Starter</option><option value="pro">Business</option></select></label>
         <label>Sort<select name="sort" defaultValue={sort}><option value="new">Newest</option><option value="old">Oldest</option><option value="name">Name</option><option value="volume">Volume, 30 days</option></select></label>
         <button className="btn btn-sm">Apply</button>
-        <Link className="btn btn-ghost btn-sm" href="/dashboard/admin/workspaces">Reset</Link>
+        <Link className="btn btn-ghost btn-sm" href="/admin/businesses">Reset</Link>
       </form>
       <section className="card">
         <div className="card-head"><h2>{total.toLocaleString('en-US')} {total === 1 ? 'business' : 'businesses'}</h2></div>
@@ -67,7 +68,7 @@ export default async function AdminWorkspaces({ searchParams }: { searchParams: 
                 return (
                   <tr key={w.id}>
                     <td>
-                      <Link href={`/dashboard/admin/workspaces/${w.id}`}><strong>{w.name}</strong></Link>
+                      <Link href={`/admin/businesses/${w.id}`}><strong>{w.name}</strong></Link>
                       <div className="row" style={{ gap: 4, marginTop: 2 }}>
                         {w.suspendedAt && <span className="badge bad">Suspended</span>}
                         {w.isDemo && <span className="badge">Demo</span>}

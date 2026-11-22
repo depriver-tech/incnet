@@ -11,7 +11,7 @@ import { ago, dateTime, money } from '@/lib/format';
 import { maskPhone } from '@/lib/phone';
 import { ROLE_INFO, type Role } from '@/lib/permissions';
 
-export const metadata = { title: 'Business · Platform' };
+export const metadata = { title: 'Business' };
 const DAY = 86_400_000;
 
 export default async function AdminWorkspace({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
@@ -38,7 +38,7 @@ export default async function AdminWorkspace({ params, searchParams }: { params:
 
   return (
     <>
-      <Link href="/dashboard/admin/workspaces" className="muted small row" style={{ gap: 6, marginBottom: 12 }}><ArrowLeft size={14} /> All businesses</Link>
+      <Link href="/admin/businesses" className="muted small row" style={{ gap: 6, marginBottom: 12 }}><ArrowLeft size={14} /> All businesses</Link>
       <div className="page-head">
         <div>
           <div className="row"><h1>{w.name}</h1>{w.suspendedAt && <span className="badge bad">Suspended</span>}{w.isDemo && <span className="badge">Demo</span>}<span className={`badge ${w.plan === 'pro' ? 'accent' : ''}`}>{PLANS[w.plan as keyof typeof PLANS]?.name ?? w.plan}</span></div>
