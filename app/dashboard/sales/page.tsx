@@ -1,57 +1,61 @@
+import Link from 'next/link';
 import { PayBadge } from '@/components/Badges';
-import { requireWorkspace } from '@/lib/auth';
+import { StackedBars } from '@/components/charts/Charts';
+import { FilterBar } from '@/components/charts/FilterBar';
+import { requirePage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { dateTime, money } from '@/lib/format';
+import { getT } from '@/lib/lang';
 import { maskPhone } from '@/lib/phone';
-import { dayKey, startOfDay } from '@/lib/time';
+import { buildReport, filterQuery, parseFilters } from '@/lib/reports';
 
 export const metadata = { title: 'Sales' };
+const PAGE = 50;
+const STATUSES = ['completed', 'pending', 'failed', 'expired', 'needs_review'];
 
-export default async function Sales() {
-  const { workspace } = await requireWorkspace();
-  const tz = workspace.timezone;
-  const since = startOfDay(tz, new Date(Date.now() - 13 * 86_400_000));
-  const [payments, recentPaid, vouchersUsed] = await Promise.all([
-    db.payment.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'desc' }, take: 100, include: { package: true, site: true, access: { select: { code: true } } } }),
-    db.payment.findMany({ where: { workspaceId: workspace.id, status: 'completed', completedAt: { gte: since } }, select: { amount: true, completedAt: true } }),
-    db.access.findMany({ where: { workspaceId: workspace.id, kind: 'voucher', activatedAt: { gte: since } }, select: { activatedAt: true, package: { select: { price: true } } } }),
+export default async function Sales({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const { workspace } = await requirePage('sales.view');
+  const t = await getT();
+  const q = await searchParams;
+  const f = parseFilters({ period: '7d', ...q }, workspace.timezone);
+  const status = STATUSES.includes(q.status || '') ? q.status! : '';
+  const search = (q.q || '').replace(/\D/g, '').replace(/^0/, '');
+  const page = Math.max(1, Number(q.page) || 1);
+  const where = {
+    workspaceId: workspace.id, createdAt: { gte: f.from, lt: f.to },
+    ...(f.site ? { siteId: f.site } : {}), ...(f.pkg ? { packageId: f.pkg } : {}), ...(status ? { status } : {}), ...(search ? { phone: { contains: search } } : {}),
+  };
+  const [report, total, sum, payments] = await Promise.all([
+    buildReport(workspace, { ...f, channel: 'mobile' }),
+    db.payment.count({ where }),
+    db.payment.aggregate({ where: { ...where, status: 'completed' }, _sum: { amount: true } }),
+    db.payment.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * PAGE, take: PAGE, include: { package: true, site: true, access: { select: { code: true } } } }),
   ]);
-
-  // Last 14 days: mobile money received plus the value of vouchers used.
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(since.getTime() + i * 86_400_000 + 12 * 3600_000);
-    return { key: dayKey(tz, d), label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: tz }), mobile: 0, voucher: 0 };
-  });
-  const byKey = new Map(days.map((d) => [d.key, d]));
-  for (const p of recentPaid) { const d = byKey.get(dayKey(tz, p.completedAt!)); if (d) d.mobile += p.amount; }
-  for (const v of vouchersUsed) { const d = byKey.get(dayKey(tz, v.activatedAt!)); if (d) d.voucher += v.package.price; }
-  const max = Math.max(1, ...days.map((d) => d.mobile + d.voucher));
-  const total = days.reduce((s, d) => s + d.mobile + d.voucher, 0);
+  const pages = Math.max(1, Math.ceil(total / PAGE));
+  const link = (extra: Record<string, string>) => `/dashboard/sales?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).filter(([, v]) => v) as [string, string][]), ...extra })}`;
+  const statusLabel: Record<string, string> = { completed: t('r.completed'), pending: t('r.pending'), failed: t('r.failed'), expired: t('r.expired'), needs_review: t('r.review') };
 
   return (
     <>
-      <div className="page-head"><div><h1>Sales</h1><p>Mobile money payments and vouchers used over the last 14 days.</p></div></div>
-      <section className="card card-pad" style={{ marginBottom: 16 }}>
-        <div className="spread" style={{ marginBottom: 14 }}>
-          <div className="stat"><small>14-day total</small><strong>{money(total)}</strong></div>
-          <div className="row small muted"><span className="row" style={{ gap: 6 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--accent)' }} />Mobile money</span><span className="row" style={{ gap: 6 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: 'color-mix(in srgb, var(--accent) 35%, var(--surface-2))' }} />Vouchers used</span></div>
-        </div>
-        <div role="img" aria-label="Daily sales for the last 14 days" style={{ display: 'grid', gridTemplateColumns: 'repeat(14, 1fr)', gap: 6, alignItems: 'end', height: 160 }}>
-          {days.map((d) => (
-            <div key={d.key} title={`${d.label}: ${money(d.mobile)} mobile, ${money(d.voucher)} vouchers`} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-              <div style={{ height: `${(d.voucher / max) * 100}%`, background: 'color-mix(in srgb, var(--accent) 35%, var(--surface-2))', borderRadius: d.mobile ? 0 : '4px 4px 0 0' }} />
-              <div style={{ height: `${(d.mobile / max) * 100}%`, background: 'var(--accent)', borderRadius: '4px 4px 0 0', order: -1 }} />
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(14, 1fr)', gap: 6, marginTop: 6 }}>
-          {days.map((d, i) => <span key={d.key} className="muted" style={{ fontSize: 10.5, textAlign: 'center' }}>{i % 2 === 1 ? d.label : ''}</span>)}
-        </div>
+      <div className="page-head"><div><h1>{t('sales.title')}</h1><p>{t('sales.sub')}</p></div></div>
+      <FilterBar path="/dashboard/sales" f={{ ...f, channel: 'mobile' }} sites={report.sites} packages={report.packages} t={t} showChannel={false} exportHref={`/api/reports/export?${filterQuery({ ...f, channel: 'mobile' })}`} />
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head"><h2>{t('r.overTime')}</h2><span className="muted small">{money(sum._sum.amount ?? 0)} · {report.kpi.success.value ?? '—'}% {t('r.success').toLowerCase()}</span></div>
+        <div className="card-pad"><StackedBars data={report.buckets} labels={{ mobile: t('r.mobile'), voucher: t('r.voucher') }} /></div>
       </section>
 
       <section className="card">
-        <div className="card-head"><h2>Mobile money payments</h2><span className="muted small">Latest 100</span></div>
-        {payments.length === 0 ? <p className="empty">No payments yet. Turn on mobile money in Settings.</p> : (
+        <div className="card-head">
+          <h2>{total.toLocaleString('en-US')} payments</h2>
+          <form className="filters" method="get">
+            {Object.entries(q).filter(([k, v]) => v && !['q', 'status', 'page'].includes(k)).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+            <input name="q" defaultValue={q.q} placeholder="Phone number" />
+            <select name="status" defaultValue={status}><option value="">All statuses</option>{STATUSES.map((s) => <option key={s} value={s}>{statusLabel[s]}</option>)}</select>
+            <button className="btn btn-ghost btn-sm">{t('common.apply')}</button>
+          </form>
+        </div>
+        {payments.length === 0 ? <p className="empty">{t('common.none')}</p> : (
           <div className="table-wrap"><table>
             <thead><tr><th>Amount</th><th>Package</th><th>Phone</th><th>Router</th><th>Code</th><th>When</th><th>Status</th></tr></thead>
             <tbody>
@@ -68,6 +72,13 @@ export default async function Sales() {
               ))}
             </tbody>
           </table></div>
+        )}
+        {pages > 1 && (
+          <div className="pager">
+            {page > 1 ? <Link className="btn btn-ghost btn-sm" href={link({ page: String(page - 1) })}>{t('common.prev')}</Link> : <span />}
+            <span className="muted small">{t('common.page')} {page} {t('common.of')} {pages}</span>
+            {page < pages ? <Link className="btn btn-ghost btn-sm" href={link({ page: String(page + 1) })}>{t('common.next')}</Link> : <span />}
+          </div>
         )}
       </section>
     </>

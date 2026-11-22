@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Palette } from 'lucide-react';
 import { PrintButton } from './PrintButton';
 import { VoucherSheet } from '@/components/VoucherSheet';
-import { requireWorkspace } from '@/lib/auth';
+import { requirePage } from '@/lib/auth';
 import { APP_URL } from '@/lib/config';
 import { db } from '@/lib/db';
 import { voucherOptions } from '@/lib/design';
@@ -14,7 +14,7 @@ export const metadata = { title: 'Print vouchers' };
 
 export default async function Batch({ params }: { params: Promise<{ batchId: string }> }) {
   const { batchId } = await params;
-  const { workspace } = await requireWorkspace();
+  const { workspace } = await requirePage('vouchers.create');
   const batch = await db.voucherBatch.findFirst({ where: { id: batchId, workspaceId: workspace.id }, include: { package: true, site: true, accesses: { orderBy: { code: 'asc' }, select: { code: true, status: true } } } });
   if (!batch) notFound();
   const p = batch.package;

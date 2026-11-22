@@ -23,6 +23,13 @@ export function portalDesign(ws: DesignSource): PortalDesign {
 
 /** Packages sold at this router: its own plus the ones sold everywhere. */
 export async function portalPackages(site: { id: string; workspaceId: string; workspace: { currency: string } }): Promise<PortalPkg[]> {
-  const packages = await db.package.findMany({ where: { workspaceId: site.workspaceId, active: true, OR: [{ siteId: null }, { siteId: site.id }] }, orderBy: [{ sort: 'asc' }, { price: 'asc' }] });
-  return packages.map((p) => ({ id: p.id, name: p.name, price: p.price, priceLabel: money(p.price, site.workspace.currency), duration: duration(p.durationMinutes), speed: speed(p.downKbps), data: p.dataLimitMb ? `${+(p.dataLimitMb / 1024).toFixed(1)} GB` : null }));
+  const [packages, sold] = await Promise.all([
+    db.package.findMany({ where: { workspaceId: site.workspaceId, active: true, OR: [{ siteId: null }, { siteId: site.id }] }, orderBy: [{ sort: 'asc' }, { price: 'asc' }] }),
+    db.payment.groupBy({ by: ['packageId'], where: { workspaceId: site.workspaceId, status: 'completed', completedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }, _count: true }),
+  ]);
+  // "Most popular" goes to the best seller of the last 30 days, when there is a clear one.
+  const best = [...sold].sort((a, b) => b._count - a._count)[0];
+  const popularId = best && best._count >= 3 && packages.some((p) => p.id === best.packageId) ? best.packageId : null;
+  return packages.map((p) => ({
+    popular: p.id === popularId, id: p.id, name: p.name, price: p.price, priceLabel: money(p.price, site.workspace.currency), duration: duration(p.durationMinutes), speed: speed(p.downKbps), data: p.dataLimitMb ? `${+(p.dataLimitMb / 1024).toFixed(1)} GB` : null }));
 }

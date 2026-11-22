@@ -5,13 +5,14 @@ import { ActionForm, Submit } from '@/components/ActionForm';
 import { CodeBox, CopyButton } from '@/components/CopyButton';
 import { AutoRefresh, StatusBadge } from '@/components/RouterStatus';
 import { deleteSite, rotateSiteToken, updateSite } from '@/lib/actions';
-import { requireWorkspace } from '@/lib/auth';
+import { requirePage } from '@/lib/auth';
 import { APP_URL, SYNC_INTERVAL } from '@/lib/config';
 import { decrypt } from '@/lib/crypto';
 import { db } from '@/lib/db';
 import { ago } from '@/lib/format';
 import { setupScript } from '@/lib/routeros';
 import { Simulator } from './Simulator';
+import { can } from '@/lib/permissions';
 
 export const metadata = { title: 'Router' };
 
@@ -24,7 +25,8 @@ const KIND = {
 export default async function SitePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ welcome?: string }> }) {
   const { id } = await params;
   const { welcome } = await searchParams;
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requirePage('routers.view');
+  const manage = can(role, 'routers.manage');
   const site = await db.site.findFirst({ where: { id, workspaceId: workspace.id } });
   if (!site) notFound();
   const token = decrypt(site.tokenEnc);
@@ -56,6 +58,8 @@ export default async function SitePage({ params, searchParams }: { params: Promi
 
       {site.kind === 'simulated' ? (
         <Simulator siteId={site.id} slug={site.slug} payments={workspace.paymentProvider} />
+      ) : !manage ? (
+        <section className="card card-pad" style={{ marginBottom: 16 }}><p className="muted">Only owners and admins can see this router&apos;s setup. It contains the router&apos;s secret token.</p></section>
       ) : site.kind === 'opennds' ? (
         <section className="card" style={{ marginBottom: 16 }}>
           <div className="card-head"><h2>One-command setup</h2><span className="muted small">Raspberry Pi OS (Bookworm+) or OpenWrt</span></div>
@@ -87,7 +91,7 @@ export default async function SitePage({ params, searchParams }: { params: Promi
         </section>
       )}
 
-      <div className="grid grid-2" style={{ marginTop: 16 }}>
+      {manage && <div className="grid grid-2" style={{ marginTop: 16 }}>
         <section className="card">
           <div className="card-head"><h2>Settings</h2></div>
           <div className="card-pad">
@@ -115,7 +119,7 @@ export default async function SitePage({ params, searchParams }: { params: Promi
             {site.kind === 'opennds' && <p className="muted small">To undo the setup on the device: stop and disable the opennds and incnet services, and delete the incnet-hotspot network connection.</p>}
           </div>
         </section>
-      </div>
+      </div>}
     </>
   );
 }

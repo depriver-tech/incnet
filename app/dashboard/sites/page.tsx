@@ -1,21 +1,25 @@
+import { getT } from '@/lib/lang';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { AutoRefresh, StatusBadge } from '@/components/RouterStatus';
-import { requireWorkspace } from '@/lib/auth';
+import { requirePage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ago } from '@/lib/format';
+import { can } from '@/lib/permissions';
 
 export const metadata = { title: 'Routers' };
 
 export default async function Sites() {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requirePage('routers.view');
+  const t = await getT();
+  const manage = can(role, 'routers.manage');
   const sites = await db.site.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'asc' } });
   return (
     <>
       <AutoRefresh seconds={10} />
       <div className="page-head">
-        <div><h1>Routers</h1><p>Each venue has one MikroTik router. incnet keeps it up to date by itself.</p></div>
-        <Link className="btn" href="/dashboard/sites/new"><Plus size={16} /> Add router</Link>
+        <div><h1>{t('routers.title')}</h1><p>Each venue has one MikroTik router. incnet keeps it up to date by itself.</p></div>
+        {manage && <Link className="btn" href="/dashboard/sites/new"><Plus size={16} /> Add router</Link>}
       </div>
       <section className="card">
         {sites.length === 0 ? (

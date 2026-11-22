@@ -1,21 +1,27 @@
+import { getT } from '@/lib/lang';
 import { ActionForm, Submit } from '@/components/ActionForm';
 import { changePassword, saveBusiness, savePayments } from '@/lib/actions';
 import { requireWorkspace } from '@/lib/auth';
 import { APP_URL, IS_CLOUD, PLANS } from '@/lib/config';
 import { money } from '@/lib/format';
 import { TIMEZONES } from '@/lib/time';
+import { can } from '@/lib/permissions';
 import Link from 'next/link';
 
 export const metadata = { title: 'Settings' };
 
 export default async function Settings() {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requireWorkspace();
+  const t = await getT();
+  const business = can(role, 'settings.business');
+  const payments = can(role, 'payments.manage');
+  const billing = can(role, 'billing.manage');
   const hasKey = !!workspace.paymentKeyEnc;
   return (
     <>
-      <div className="page-head"><div><h1>Settings</h1><p>Your business, the hotspot page and mobile money.</p></div></div>
+      <div className="page-head"><div><h1>{t('settings.title')}</h1><p>{business ? 'Your business, mobile money and your account.' : 'Your account.'}</p></div></div>
       <div className="grid grid-2" style={{ alignItems: 'start' }}>
-        <section className="card">
+        {business && <section className="card">
           <div className="card-head"><h2>Business</h2></div>
           <div className="card-pad">
             <ActionForm action={saveBusiness}>
@@ -33,9 +39,9 @@ export default async function Settings() {
               <div><Submit>Save</Submit></div>
             </ActionForm>
           </div>
-        </section>
+        </section>}
 
-        <section className="card">
+        {payments && <section className="card">
           <div className="card-head"><h2>Mobile money</h2>{workspace.paymentProvider === 'test' ? <span className="badge warn">Test mode</span> : workspace.paymentProvider !== 'none' && hasKey ? <span className="badge ok">On</span> : <span className="badge">Off</span>}</div>
           <div className="card-pad">
             <ActionForm action={savePayments}>
@@ -58,9 +64,9 @@ export default async function Settings() {
               <div><Submit>Save payments</Submit></div>
             </ActionForm>
           </div>
-        </section>
+        </section>}
 
-        {IS_CLOUD && (
+        {IS_CLOUD && billing && (
           <section className="card">
             <div className="card-head"><h2>Plan</h2></div>
             <div className="card-pad stack" style={{ gap: 10 }}>

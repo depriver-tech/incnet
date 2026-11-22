@@ -1,5 +1,6 @@
 import { Fonts } from '@/components/Fonts';
 import Link from 'next/link';
+import { LangSwitch } from '@/components/i18n/LangProvider';
 
 
 /** Centered layout shared by sign-in and sign-up. */
@@ -8,6 +9,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
     <main className="auth-page">
       <Fonts />
       <div className="auth-glow" aria-hidden />
+      <div className="auth-lang"><LangSwitch /></div>
       <div className="auth-box">
         <div className="auth-head">
           <Link href="/" className="auth-brand"><img src="/logo.svg" alt="" /><span>incnet</span></Link>

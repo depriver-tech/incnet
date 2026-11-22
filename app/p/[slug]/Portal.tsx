@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-export type PortalPkg = { id: string; name: string; price: number; priceLabel: string; duration: string; speed: string; data: string | null };
+export type PortalPkg = { id: string; name: string; price: number; priceLabel: string; duration: string; speed: string; data: string | null; popular?: boolean };
 /** How the phone gets online once its code is on the router. */
 export type Handoff = { kind: 'router'; url: string } | { kind: 'gateway' } | { kind: 'none' };
 export type PortalCtx = { mac: string | null; ip: string | null; handoff: Handoff; dst: string | null; err: string | null; code: string | null };
@@ -18,14 +18,20 @@ const T = {
     noPay: 'Buy a voucher from staff to get online.', min: 'Mobile money starts at', choose: 'Choose a package first.', offline: 'The router is offline right now. Your time is saved; ask staff for help.',
     notOnWifi: 'Connect to the Wi-Fi network, then enter this code to get online.', reconnect: 'Reconnect with', help: 'Help:', lang: 'Kiswahili', open: 'Start browsing', terms: 'By connecting you accept the terms of use.', readTerms: 'Terms',
     preview: 'Preview only. Buttons work on the live page.',
+    tabBuy: 'Buy a package', tabVoucher: 'I have a voucher', popular: 'Most popular', secure: 'Secure payment · you confirm on your own phone · no card needed',
+    step1: 'Prompt sent', step2: 'Enter your PIN', step3: 'Connecting', paying2: 'We sent a payment request of', to: 'to', validUntil: 'Valid until', online: 'Secure Wi-Fi',
+    voucherHint: 'Find the code on your printed voucher, or scan its QR code.', pick: 'Choose a package',
   },
   sw: {
     haveCode: 'Una vocha?', codePh: 'Weka namba ya vocha', connect: 'Unganisha', buy: 'Nunua kifurushi', phone: 'Namba ya simu ya kulipia', pay: 'Lipa', with: 'M-Pesa · Mixx by Yas · Airtel Money · Halotel',
     paying: 'Angalia simu yako', payingText: 'Weka PIN kwenye ujumbe ili kulipa. Usifunge ukurasa huu.', syncing: 'Tunakuunganisha…', syncingText: 'Wi-Fi yako inawashwa. Subiri sekunde chache.',
     ready: 'Umeunganishwa', readyText: 'Furahia intaneti.', yourCode: 'Namba yako', keepCode: 'Hifadhi namba hii ili kuunganisha tena.', tryAgain: 'Ghairi',
-    noPay: 'Nunua vocha kwa mhudumu ili kuunganishwa.', min: 'Malipo ya simu yanaanzia', choose: 'Chagua kifurushi kwanza.', offline: 'Router haipo hewani kwa sasa. Muda wako umehifadhiwa; muulize mhudumu.',
+    noPay: 'Nunua vocha kwa mhudumu ili kuunganishwa.', min: 'Malipo ya simu yanaanzia', choose: 'Chagua kifurushi kwanza.', offline: 'Ruta haipo hewani kwa sasa. Muda wako umehifadhiwa; muulize mhudumu.',
     notOnWifi: 'Unganisha kwenye mtandao wa Wi-Fi, kisha weka namba hii.', reconnect: 'Unganisha tena kwa', help: 'Msaada:', lang: 'English', open: 'Anza kutumia', terms: 'Kwa kuunganisha unakubali masharti ya matumizi.', readTerms: 'Masharti',
     preview: 'Hakikisho tu. Vitufe vinafanya kazi kwenye ukurasa halisi.',
+    tabBuy: 'Nunua kifurushi', tabVoucher: 'Nina vocha', popular: 'Kinachopendwa zaidi', secure: 'Malipo salama · unathibitisha kwenye simu yako · hakuna kadi inayohitajika',
+    step1: 'Ombi limetumwa', step2: 'Weka PIN yako', step3: 'Tunakuunganisha', paying2: 'Tumetuma ombi la malipo la', to: 'kwa', validUntil: 'Inatumika hadi', online: 'Wi-Fi salama',
+    voucherHint: 'Angalia namba kwenye vocha yako, au scan QR code yake.', pick: 'Chagua kifurushi',
   },
 };
 
@@ -43,6 +49,8 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [saved, setSaved] = useState<string | null>(null);
   const [showTerms, setShowTerms] = useState(false);
+  const [tab, setTab] = useState<'buy' | 'voucher'>(ctx.code || !props.payments ? 'voucher' : 'buy');
+  const [expires, setExpires] = useState<string | null>(null);
   const handedOff = useRef(false);
 
   useEffect(() => setLang(design.lang), [design.lang]);
@@ -61,10 +69,13 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
       if (!data || data.error) return;
       if (data.state === 'failed') setPhase({ kind: 'failed', message: data.message });
       else if (data.state === 'syncing') setPhase((cur) => (cur.kind === 'syncing' && cur.accessId === data.accessId && cur.offline === !data.routerOnline ? cur : { kind: 'syncing', accessId: data.accessId, code: data.code, offline: !data.routerOnline }));
-      else if (data.state === 'ready') setPhase({ kind: 'ready', code: data.code });
+      else if (data.state === 'ready') {
+        if (data.expiresAt) setExpires(new Date(data.expiresAt).toLocaleString(lang === 'sw' ? 'sw-TZ' : 'en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }));
+        setPhase({ kind: 'ready', code: data.code });
+      }
     }, 2000);
     return () => clearInterval(timer);
-  }, [phase, slug]);
+  }, [phase, slug, lang]);
 
   // Ready: remember the code and hand the phone to the router.
   useEffect(() => {
@@ -116,7 +127,7 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
         <header className="p-head">
           <div className="p-brand">
             {design.logo ? <img className="p-logo-img" src={design.logo} alt="" /> : <span className="p-logo">{props.business.slice(0, 1).toUpperCase()}</span>}
-            <div><strong>{props.business}</strong><small>Wi-Fi</small></div>
+            <div><strong>{props.business}</strong><small><span className="p-live" /> {t.online}</small></div>
           </div>
           <button type="button" className="p-lang" onClick={() => setLang(lang === 'en' ? 'sw' : 'en')}>{t.lang}</button>
         </header>
@@ -131,25 +142,30 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
           <>
             {error && <p className="p-error" role="alert">{error}</p>}
             {phase.kind === 'failed' && <p className="p-error" role="alert">{phase.message}</p>}
-
             {saved && <button type="button" className="p-btn p-ghost" disabled={busy} onClick={() => redeem(saved)}>{t.reconnect} <b className="p-mono">{saved}</b></button>}
 
-            <section className="p-card">
-              <h2>{t.haveCode}</h2>
-              <form onSubmit={(e) => { e.preventDefault(); redeem(code); }} className="p-inline">
-                <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t.codePh} autoCapitalize="characters" autoComplete="off" spellCheck={false} className="p-mono" maxLength={16} aria-label={t.codePh} />
-                <button className="p-btn" disabled={busy || code.length < 4}>{busy ? <span className="p-dots" /> : t.connect}</button>
-              </form>
-            </section>
+            <div className="p-tabs" role="tablist">
+              {props.packages.length > 0 && <button type="button" role="tab" aria-selected={tab === 'buy'} className={tab === 'buy' ? 'on' : ''} onClick={() => setTab('buy')}>{t.tabBuy}</button>}
+              <button type="button" role="tab" aria-selected={tab === 'voucher'} className={tab === 'voucher' ? 'on' : ''} onClick={() => setTab('voucher')}>{t.tabVoucher}</button>
+            </div>
 
-            {props.packages.length > 0 && (
+            {tab === 'voucher' || props.packages.length === 0 ? (
               <section className="p-card">
-                <h2>{t.buy}</h2>
+                <h2>{t.haveCode}</h2>
+                <p className="p-hint">{t.voucherHint}</p>
+                <form onSubmit={(e) => { e.preventDefault(); redeem(code); }} className="p-stack">
+                  <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t.codePh} autoCapitalize="characters" autoComplete="off" spellCheck={false} className="p-mono p-code-input" maxLength={16} aria-label={t.codePh} />
+                  <button className="p-btn p-big" disabled={busy || code.length < 4}>{busy ? <span className="p-dots" /> : t.connect}</button>
+                </form>
+              </section>
+            ) : (
+              <section className="p-card">
+                <h2>{t.pick}</h2>
                 <div className="p-pkgs" role="radiogroup" aria-label={t.buy}>
                   {props.packages.map((p) => (
                     <button key={p.id} role="radio" aria-checked={pkg === p.id} className={`p-pkg${pkg === p.id ? ' on' : ''}`} onClick={() => setPkg(p.id)} type="button">
                       <span className="p-radio" aria-hidden />
-                      <span className="p-pkg-text"><strong>{p.name}</strong><small>{p.name.toLowerCase() === p.duration.toLowerCase() ? '' : `${p.duration} · `}{p.speed}{p.data ? ` · ${p.data}` : ''}</small></span>
+                      <span className="p-pkg-text"><strong>{p.name}{p.popular && <em className="p-pop">{t.popular}</em>}</strong><small>{p.name.toLowerCase() === p.duration.toLowerCase() ? '' : `${p.duration} · `}{p.speed}{p.data ? ` · ${p.data}` : ''}</small></span>
                       <b>{p.priceLabel}</b>
                     </button>
                   ))}
@@ -157,27 +173,34 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
                 {props.payments ? (
                   <form onSubmit={(e) => { e.preventDefault(); pay(); }} className="p-pay">
                     <label>{t.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="07XX XXX XXX" autoComplete="tel" /></label>
+                    <div className="p-nets" aria-label={t.with}><span className="n-mpesa">M-Pesa</span><span className="n-mixx">Mixx by Yas</span><span className="n-airtel">Airtel Money</span><span className="n-halo">Halotel</span></div>
                     {selected && selected.price < props.minPayment && <p className="p-note">{t.min} TSh {props.minPayment}</p>}
                     <button className="p-btn p-big" disabled={busy}>{busy ? <span className="p-dots" /> : `${t.pay} ${selected?.priceLabel ?? ''}`}</button>
-                    <p className="p-note">{t.with}</p>
+                    <p className="p-secure"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4Zm-1 15-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7Z" /></svg>{t.secure}</p>
                   </form>
                 ) : <p className="p-note">{t.noPay}</p>}
               </section>
             )}
-            {design.terms && (
-              <p className="p-terms">{t.terms} <button type="button" className="p-link-inline" onClick={() => setShowTerms(!showTerms)}>{t.readTerms}</button></p>
-            )}
+            {design.terms && <p className="p-terms">{t.terms} <button type="button" className="p-link-inline" onClick={() => setShowTerms(!showTerms)}>{t.readTerms}</button></p>}
             {showTerms && design.terms && <div className="p-card p-terms-box">{design.terms}</div>}
           </>
         ) : (
           <section className="p-card p-center" aria-live="polite">
-            {phase.kind === 'paying' && <><div className="p-spin" /><h2>{t.paying}</h2><p>{t.payingText}</p></>}
+            {(phase.kind === 'paying' || phase.kind === 'syncing') && (
+              <ol className="p-track">
+                <li className="done"><i>✓</i>{t.step1}</li>
+                <li className={phase.kind === 'paying' ? 'now' : 'done'}><i>{phase.kind === 'paying' ? '2' : '✓'}</i>{t.step2}</li>
+                <li className={phase.kind === 'syncing' ? 'now' : ''}><i>3</i>{t.step3}</li>
+              </ol>
+            )}
+            {phase.kind === 'paying' && <><div className="p-spin" /><h2>{t.paying}</h2><p>{t.paying2} <b>{selected?.priceLabel}</b> {t.to} <b className="p-mono">{phone}</b>. {t.payingText}</p></>}
             {phase.kind === 'syncing' && <><div className="p-spin" /><h2>{t.syncing}</h2><p>{phase.offline ? t.offline : t.syncingText}</p></>}
             {phase.kind === 'ready' && (
               <>
                 <div className="p-check">✓</div>
                 <h2>{t.ready}</h2>
                 <p>{readyText}</p>
+                {expires && <p className="p-valid">{t.validUntil} <b>{expires}</b></p>}
                 {ctx.handoff.kind === 'router' && <a className="p-btn p-big" href={routerUrl(ctx.handoff.url, phase.code, ctx.dst)}>{t.open}</a>}
                 {ctx.handoff.kind === 'gateway' && <a className="p-btn p-big" href={ctx.dst || 'http://neverssl.com'}>{t.open}</a>}
               </>
@@ -205,6 +228,7 @@ function routerUrl(base: string, code: string, dst: string | null) {
 const PORTAL_CSS = `
 .portal{--ink:#14181a;--muted:#5f6b6d;--card:#fff;--line:#e3e8e6;--page:#f4f6f5;min-height:100vh;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5}
 .portal *{box-sizing:border-box}
+.portal h1,.portal h2,.portal h3{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-weight:700;letter-spacing:-.01em}
 .p-wrap{max-width:440px;margin:0 auto;padding:16px 16px 28px}
 .p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .p-brand{display:flex;align-items:center;gap:10px}.p-brand small{display:block;color:var(--muted);font-size:12px;line-height:1}
@@ -276,6 +300,32 @@ const PORTAL_CSS = `
 .t-photo .p-pkg.on{background:rgba(255,255,255,.26)}
 .t-photo .p-pkg.on .p-radio{box-shadow:inset 0 0 0 3px #555}
 .t-photo .p-hero h1{font-size:30px;text-shadow:0 2px 12px rgba(0,0,0,.35)}
+
+/* Tabs, trust, tracker */
+.p-live{display:inline-block;width:7px;height:7px;border-radius:50%;background:#1f9d55;margin-right:3px;box-shadow:0 0 0 3px rgba(31,157,85,.18)}
+.p-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin-bottom:12px;border-radius:14px;background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.p-tabs button{min-height:42px;border:0;border-radius:11px;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14.5px;cursor:pointer;transition:all .15s}
+.p-tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 2px 8px rgba(20,24,26,.08)}
+.p-tabs button:only-child{grid-column:1/-1}
+.p-hint{color:var(--muted);font-size:13.5px;margin:-6px 0 12px}
+.p-stack{display:grid;gap:10px}
+.p-code-input{text-align:center;font-size:22px!important;letter-spacing:.18em!important;padding:15px!important}
+.p-pop{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--accent);color:#fff;font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.02em;vertical-align:2px}
+.p-nets{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.p-nets span{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid var(--line);background:var(--card);white-space:nowrap}
+.n-mpesa{color:#d0312d}.n-mixx{color:#1d4ed8}.n-airtel{color:#e11d2b}.n-halo{color:#ea7a12}
+.p-secure{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12px;margin:0;text-align:center}
+.p-secure svg{color:#1f9d55;flex:none}
+.p-track{list-style:none;display:flex;justify-content:space-between;gap:6px;padding:0;margin:0 0 20px;font-size:12px;color:var(--muted)}
+.p-track li{flex:1;display:grid;justify-items:center;gap:5px;position:relative}
+.p-track li:not(:last-child)::after{content:'';position:absolute;top:13px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;background:var(--line)}
+.p-track li.done:not(:last-child)::after{background:var(--accent)}
+.p-track i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:12px;background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--muted)}
+.p-track li.done i{background:var(--accent);color:#fff}
+.p-track li.now{color:var(--ink);font-weight:600}
+.p-track li.now i{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.p-valid{font-size:14px}
+.t-photo .p-tabs button.on,.t-bold .p-tabs button.on{background:rgba(255,255,255,.18);color:#fff}
 
 @media (prefers-color-scheme:dark){
   .t-modern{--ink:#eef2f0;--muted:#9aa6a5;--card:#151a1b;--line:#283031;--page:#0d1011}

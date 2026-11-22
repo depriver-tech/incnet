@@ -7,30 +7,32 @@ import { currentUser } from '@/lib/auth';
 import { login } from '@/lib/actions';
 import { IS_CLOUD } from '@/lib/config';
 import { startDemo } from '@/lib/demo';
+import { getT } from '@/lib/lang';
 
 export const metadata = { title: 'Sign in' };
 
 export default async function Login() {
   if (await currentUser()) redirect('/dashboard');
+  const t = await getT();
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Sign in to manage your hotspots, packages and sales"
-      footer={<>Don&apos;t have an account? <Link href="/signup">Create one</Link></>}
+      title={t('auth.welcome')}
+      subtitle={t('auth.welcomeSub')}
+      footer={<>{t('auth.noAccount')} <Link href="/signup">{t('auth.create')}</Link></>}
     >
       <AuthCard
         action={login}
-        submit="Sign in"
+        submit={t('auth.signin')}
         fields={[
-          { name: 'email', label: 'Email', type: 'email', autoComplete: 'email', placeholder: 'you@business.com', icon: 'mail' },
-          { name: 'password', label: 'Password', type: 'password', autoComplete: 'current-password', placeholder: '••••••••', icon: 'lock' },
+          { name: 'email', label: t('auth.email'), type: 'email', autoComplete: 'email', placeholder: 'you@business.com', icon: 'mail' },
+          { name: 'password', label: t('auth.password'), type: 'password', autoComplete: 'current-password', placeholder: '••••••••', icon: 'lock' },
         ]}
       >
         {IS_CLOUD && (
           <>
-            <div className="auth-divider"><span>or</span></div>
+            <div className="auth-divider"><span>{t('auth.or')}</span></div>
             <form action={startDemo}>
-              <button className="auth-alt" type="submit"><FlaskConical size={16} /> Try the live demo, no account needed</button>
+              <button className="auth-alt" type="submit"><FlaskConical size={16} /> {t('auth.demo')}</button>
             </form>
           </>
         )}

@@ -41,7 +41,7 @@ function Input({ field, autoFocus }: { field: Field; autoFocus: boolean }) {
 }
 
 /** The incnet sign-in and sign-up card, styled after the Incpritech sign-in page. */
-export function AuthCard({ action, fields, submit, children }: { action: (s: FormState, fd: FormData) => Promise<FormState>; fields: Field[]; submit: string; children?: React.ReactNode }) {
+export function AuthCard({ action, fields, submit, children, hidden }: { action: (s: FormState, fd: FormData) => Promise<FormState>; fields: Field[]; submit: string; children?: React.ReactNode; hidden?: Record<string, string> }) {
   const [state, run] = useActionState(action, undefined);
   return (
     <div className="auth-card">
@@ -49,6 +49,7 @@ export function AuthCard({ action, fields, submit, children }: { action: (s: For
         <div className="auth-error" role="alert"><AlertCircle size={15} /><span>{state.error}</span></div>
       )}
       <form action={run} className="auth-form">
+        {hidden && Object.entries(hidden).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
         {fields.map((f, i) => <Input key={f.name} field={f} autoFocus={i === 0} />)}
         <SubmitButton>{submit}</SubmitButton>
       </form>

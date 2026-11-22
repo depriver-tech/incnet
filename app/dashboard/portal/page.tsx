@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { PortalDesigner } from './PortalDesigner';
-import { requireWorkspace } from '@/lib/auth';
+import { requirePage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { portalDesign, portalPackages } from '@/lib/portal';
 
 export const metadata = { title: 'Wi-Fi page' };
 
 export default async function PortalDesign() {
-  const { workspace } = await requireWorkspace();
+  const { workspace } = await requirePage('portal.design');
   const site = await db.site.findFirst({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'asc' } });
   const packages = site
     ? await portalPackages({ ...site, workspace })

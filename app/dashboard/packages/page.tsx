@@ -1,8 +1,10 @@
+import { getT } from '@/lib/lang';
 import { ActionForm, Submit } from '@/components/ActionForm';
 import { savePackage, togglePackage } from '@/lib/actions';
-import { requireWorkspace } from '@/lib/auth';
+import { requirePage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { duration, money, speed } from '@/lib/format';
+import { can } from '@/lib/permissions';
 
 export const metadata = { title: 'Packages' };
 
@@ -44,15 +46,17 @@ function PackageFields({ pkg, sites }: { pkg?: Pkg; sites: SiteOpt[] }) {
 }
 
 export default async function Packages() {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requirePage('packages.view');
+  const t = await getT();
+  const manage = can(role, 'packages.manage');
   const [packages, sites] = await Promise.all([
     db.package.findMany({ where: { workspaceId: workspace.id }, orderBy: [{ active: 'desc' }, { sort: 'asc' }, { price: 'asc' }], include: { site: { select: { name: true } } } }),
     db.site.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } }),
   ]);
   return (
     <>
-      <div className="page-head"><div><h1>Packages</h1><p>What customers can buy. Time starts when a code is first used.</p></div></div>
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.6fr) minmax(280px, 1fr)', alignItems: 'start' }}>
+      <div className="page-head"><div><h1>{t('packages.title')}</h1><p>What customers can buy. Time starts when a code is first used.</p></div></div>
+      <div className="grid" style={{ gridTemplateColumns: manage ? 'minmax(0, 1.6fr) minmax(280px, 1fr)' : '1fr', alignItems: 'start' }}>
         <section className="card">
           {packages.length === 0 ? <p className="empty">No packages yet. Add one on the right.</p> : (
             <div className="table-wrap"><table>
@@ -62,16 +66,16 @@ export default async function Packages() {
                   <tr key={p.id} style={{ opacity: p.active ? 1 : 0.55 }}>
                     <td>
                       <strong>{p.name}</strong><div className="muted small">{duration(p.durationMinutes)} · {p.site ? `${p.site.name} only` : 'every router'}</div>
-                      <details style={{ marginTop: 6 }}>
+                      {manage && <details style={{ marginTop: 6 }}>
                         <summary className="small accent" style={{ cursor: 'pointer' }}>Edit</summary>
                         <div style={{ marginTop: 10, minWidth: 280 }}><ActionForm action={savePackage}><PackageFields pkg={p} sites={sites} /><div><Submit className="btn btn-sm">Save</Submit></div></ActionForm></div>
-                      </details>
+                      </details>}
                     </td>
                     <td><strong>{money(p.price)}</strong></td>
                     <td className="muted small">↓ {speed(p.downKbps)}<br />↑ {speed(p.upKbps)}</td>
                     <td className="muted small">{p.dataLimitMb ? `${+(p.dataLimitMb / 1024).toFixed(2)} GB` : 'No data cap'}<br />{p.devices} device{p.devices > 1 ? 's' : ''}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <form action={togglePackage}><input type="hidden" name="id" value={p.id} /><button className="btn btn-ghost btn-sm">{p.active ? 'Hide' : 'Show'}</button></form>
+                      {manage ? <form action={togglePackage}><input type="hidden" name="id" value={p.id} /><button className="btn btn-ghost btn-sm">{p.active ? 'Hide' : 'Show'}</button></form> : !p.active && <span className="badge">Hidden</span>}
                     </td>
                   </tr>
                 ))}
@@ -79,10 +83,10 @@ export default async function Packages() {
             </table></div>
           )}
         </section>
-        <section className="card">
+        {manage && <section className="card">
           <div className="card-head"><h2>Add a package</h2></div>
           <div className="card-pad"><ActionForm action={savePackage} resetOnOk><PackageFields sites={sites} /><div><Submit>Add package</Submit></div></ActionForm></div>
-        </section>
+        </section>}
       </div>
     </>
   );

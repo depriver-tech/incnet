@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { checkPassword, currentUser, endSession, hashPassword, requireWorkspace, startSession } from './auth';
+import { checkPassword, currentUser, endSession, hashPassword, requireAction, requireWorkspace, startSession } from './auth';
+import { audit } from './audit';
+import { PermissionError, type Permission } from './permissions';
 import { ALLOW_SIGNUP, siteLimit } from './config';
 import { encrypt, newToken, sha256, slugify } from './crypto';
 import { db } from './db';
@@ -11,6 +13,16 @@ import { uniqueCode } from './access';
 import { parsePorts } from './routeros';
 
 export type FormState = { error?: string; ok?: string } | undefined;
+
+/** The workspace context when the role allows `perm`, or a form error to show. */
+async function allowed(perm: Permission) {
+  try {
+    return await requireAction(perm);
+  } catch (err) {
+    if (err instanceof PermissionError) return { error: err.message } as const;
+    throw err;
+  }
+}
 
 const field = (fd: FormData, name: string) => String(fd.get(name) ?? '').trim();
 const firstIssue = (err: z.ZodError) => err.issues[0]?.message || 'Check the form and try again.';
@@ -27,7 +39,7 @@ const STARTER_PACKAGES = [
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Enter your name.').max(80),
-  business: z.string().min(2, 'Enter your business name.').max(80),
+  business: z.string().max(80),
   email: z.string().email('Enter a valid email.').max(160).transform((v) => v.toLowerCase()),
   password: z.string().min(8, 'Use at least 8 characters for the password.').max(200),
 });
@@ -36,11 +48,24 @@ export async function signup(_: FormState, fd: FormData): Promise<FormState> {
   const parsed = signupSchema.safeParse({ name: field(fd, 'name'), business: field(fd, 'business'), email: field(fd, 'email'), password: String(fd.get('password') ?? '') });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { name, business, email, password } = parsed.data;
+  const inviteToken = field(fd, 'invite');
 
+  if (await db.user.findUnique({ where: { email } })) return { error: 'That email already has an account. Sign in instead.' };
+
+  // Joining through an invite: no new business, works even when open sign-up is off.
+  if (inviteToken) {
+    const { inviteFromToken, claimInvite } = await import('./team-actions');
+    if (!(await inviteFromToken(inviteToken))) return { error: 'This invite link has expired or was already used. Ask for a new one.' };
+    const user = await db.user.create({ data: { email, name, passwordHash: await hashPassword(password) } });
+    await claimInvite(inviteToken, user.id);
+    await startSession(user.id);
+    redirect('/dashboard?joined=1');
+  }
+
+  if (business.length < 2) return { error: 'Enter your business name.' };
   // Throwaway demo accounts never count: the first real account owns the server.
   const users = await db.user.count({ where: { NOT: { email: { endsWith: '@demo.incnet.local' } } } });
   if (users > 0 && !ALLOW_SIGNUP) return { error: 'Sign-up is closed on this server. Ask the owner to invite you.' };
-  if (await db.user.findUnique({ where: { email } })) return { error: 'That email already has an account. Sign in instead.' };
 
   const user = await db.user.create({
     data: {
@@ -57,6 +82,11 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
   const user = email ? await db.user.findUnique({ where: { email } }) : null;
   if (!user || !(await checkPassword(String(fd.get('password') ?? ''), user.passwordHash))) return { error: 'Email or password is wrong.' };
   await startSession(user.id);
+  const inviteToken = field(fd, 'invite');
+  if (inviteToken) {
+    const { claimInvite } = await import('./team-actions');
+    if (await claimInvite(inviteToken, user.id)) redirect('/dashboard?joined=1');
+  }
   redirect('/dashboard');
 }
 
@@ -95,7 +125,9 @@ async function uniqueSlug(base: string) {
 }
 
 export async function createSite(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await allowed('routers.manage');
+  if ('error' in ctx) return ctx;
+  const { workspace } = ctx;
   const kind = field(fd, 'kind') || 'mikrotik';
   const defaultPort = kind === 'opennds' ? 'wlan0' : kind === 'simulated' ? 'sim0' : 'ether5';
   const parsed = siteSchema.safeParse({ kind, name: field(fd, 'name'), ports: field(fd, 'ports') || defaultPort, subnet: field(fd, 'subnet') || 50 });
@@ -108,31 +140,40 @@ export async function createSite(_: FormState, fd: FormData): Promise<FormState>
   const site = await db.site.create({
     data: { workspaceId: workspace.id, kind: parsed.data.kind, name: parsed.data.name, ports: parsePorts(parsed.data.ports).join(','), subnet: parsed.data.subnet, slug: await uniqueSlug(parsed.data.name), tokenHash: sha256(token), tokenEnc: encrypt(token) },
   });
+  await audit(ctx, 'router.create', `${site.name} (${site.kind})`);
   redirect(`/dashboard/sites/${site.id}`);
 }
 
 export async function updateSite(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await allowed('routers.manage');
+  if ('error' in ctx) return ctx;
+  const { workspace } = ctx;
   const id = field(fd, 'id');
   const parsed = siteSchema.safeParse({ name: field(fd, 'name'), ports: field(fd, 'ports'), subnet: field(fd, 'subnet') });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   await db.site.updateMany({ where: { id, workspaceId: workspace.id }, data: { name: parsed.data.name, ports: parsePorts(parsed.data.ports).join(','), subnet: parsed.data.subnet } });
+  await audit(ctx, 'router.update', parsed.data.name);
   revalidatePath(`/dashboard/sites/${id}`);
   return { ok: 'Saved. Paste the updated script on the router to apply port or network changes.' };
 }
 
 /** Issues a new router token. The old script stops working immediately. */
 export async function rotateSiteToken(fd: FormData) {
-  const { workspace } = await requireWorkspace();
+  const ctx = await requireAction('routers.manage');
+  const { workspace } = ctx;
   const id = field(fd, 'id');
   const token = newToken('inr_');
   await db.site.updateMany({ where: { id, workspaceId: workspace.id }, data: { tokenHash: sha256(token), tokenEnc: encrypt(token), appliedCursor: 0 } });
+  await audit(ctx, 'router.token', id);
   revalidatePath(`/dashboard/sites/${id}`);
 }
 
 export async function deleteSite(fd: FormData) {
-  const { workspace } = await requireWorkspace();
+  const ctx = await requireAction('routers.manage');
+  const { workspace } = ctx;
+  const gone = await db.site.findFirst({ where: { id: field(fd, 'id'), workspaceId: workspace.id }, select: { name: true } });
   await db.site.deleteMany({ where: { id: field(fd, 'id'), workspaceId: workspace.id } });
+  if (gone) await audit(ctx, 'router.delete', gone.name);
   redirect('/dashboard/sites');
 }
 
@@ -153,7 +194,9 @@ const packageSchema = z.object({
 const UNIT_MINUTES = { minutes: 1, hours: 60, days: 1440 } as const;
 
 export async function savePackage(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await allowed('packages.manage');
+  if ('error' in ctx) return ctx;
+  const { workspace } = ctx;
   const parsed = packageSchema.safeParse({
     name: field(fd, 'name'), price: field(fd, 'price'), duration: field(fd, 'duration'), unit: field(fd, 'unit'),
     down: field(fd, 'down'), up: field(fd, 'up'), data: field(fd, 'data') || undefined, devices: field(fd, 'devices') || 1, siteId: field(fd, 'siteId') || undefined,
@@ -169,21 +212,26 @@ export async function savePackage(_: FormState, fd: FormData): Promise<FormState
   const id = field(fd, 'id');
   if (id) await db.package.updateMany({ where: { id, workspaceId: workspace.id }, data });
   else await db.package.create({ data: { ...data, workspaceId: workspace.id, sort: (await db.package.count({ where: { workspaceId: workspace.id } })) + 1 } });
+  await audit(ctx, 'package.save', `${data.name} · TSh ${data.price}`);
   revalidatePath('/dashboard/packages');
   return { ok: id ? 'Package updated.' : 'Package added.' };
 }
 
 export async function togglePackage(fd: FormData) {
-  const { workspace } = await requireWorkspace();
+  const ctx = await requireAction('packages.manage');
+  const { workspace } = ctx;
   const pkg = await db.package.findFirst({ where: { id: field(fd, 'id'), workspaceId: workspace.id } });
   if (pkg) await db.package.update({ where: { id: pkg.id }, data: { active: !pkg.active } });
+  if (pkg) await audit(ctx, 'package.toggle', `${pkg.name} ${pkg.active ? 'hidden' : 'shown'}`);
   revalidatePath('/dashboard/packages');
 }
 
 // ── Vouchers ──────────────────────────────────────────────────────
 
 export async function createVouchers(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await allowed('vouchers.create');
+  if ('error' in ctx) return ctx;
+  const { workspace } = ctx;
   const count = Number(field(fd, 'count'));
   if (!Number.isInteger(count) || count < 1 || count > 500) return { error: 'Make between 1 and 500 vouchers at a time.' };
   const siteId = field(fd, 'siteId');
@@ -199,20 +247,26 @@ export async function createVouchers(_: FormState, fd: FormData): Promise<FormSt
     await tx.access.createMany({ data: [...codes].map((code) => ({ workspaceId: workspace.id, siteId: site.id, packageId: pkg.id, batchId: b.id, code, kind: 'voucher' })) });
     return b;
   }, { timeout: 30_000 });
+  await audit(ctx, 'vouchers.create', `${count} × ${pkg.name} for ${site.name}`);
   redirect(`/dashboard/vouchers/${batch.id}`);
 }
 
 /** Cancels a code. If it is in use, the router disconnects it on the next sync. */
 export async function revokeAccess(fd: FormData) {
-  const { workspace } = await requireWorkspace();
+  const ctx = await requireAction('vouchers.revoke');
+  const { workspace } = ctx;
+  const target = await db.access.findFirst({ where: { id: field(fd, 'id'), workspaceId: workspace.id }, select: { code: true } });
   await db.access.updateMany({ where: { id: field(fd, 'id'), workspaceId: workspace.id, status: { in: ['unused', 'active'] } }, data: { status: 'revoked' } });
+  if (target) await audit(ctx, 'access.revoke', target.code);
   revalidatePath('/dashboard', 'layout');
 }
 
 // ── Settings ──────────────────────────────────────────────────────
 
 export async function saveBusiness(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await allowed('settings.business');
+  if ('error' in ctx) return ctx;
+  const { workspace } = ctx;
   const name = field(fd, 'name');
   const color = field(fd, 'brandColor');
   if (name.length < 2) return { error: 'Enter the business name.' };
@@ -223,16 +277,20 @@ export async function saveBusiness(_: FormState, fd: FormData): Promise<FormStat
     where: { id: workspace.id },
     data: { name: name.slice(0, 80), brandColor: color, timezone, supportPhone: field(fd, 'supportPhone').slice(0, 30) || null, welcomeText: field(fd, 'welcomeText').slice(0, 200) || null },
   });
+  await audit(ctx, 'settings.business', name);
   revalidatePath('/dashboard', 'layout');
-  return { ok: 'Saved. The hotspot page uses these details now.' };
+  return { ok: 'Saved.' };
 }
 
 export async function savePayments(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await allowed('payments.manage');
+  if ('error' in ctx) return ctx;
+  const { workspace } = ctx;
   const provider = field(fd, 'provider');
   if (!['none', 'incpesa', 'snippe', 'test'].includes(provider)) return { error: 'Choose a payment option.' };
   if (provider === 'test') {
     await db.workspace.update({ where: { id: workspace.id }, data: { paymentProvider: 'test' } });
+    await audit(ctx, 'settings.payments', 'Test mode');
     revalidatePath('/dashboard', 'layout');
     return { ok: 'Test mode is on. Payments complete by themselves after a few seconds and no money moves. Switch to a real provider before opening to customers.' };
   }
@@ -251,6 +309,7 @@ export async function savePayments(_: FormState, fd: FormData): Promise<FormStat
       ...(secret ? { paymentSecretEnc: encrypt(secret) } : {}),
     },
   });
+  await audit(ctx, 'settings.payments', provider === 'none' ? 'Turned off' : provider);
   revalidatePath('/dashboard', 'layout');
   return { ok: provider === 'none' ? 'Mobile payments are off. Vouchers still work.' : 'Mobile payments are on. Try a small test payment from the hotspot page.' };
 }

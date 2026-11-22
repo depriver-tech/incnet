@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import type { FormState } from './actions';
-import { requireWorkspace } from './auth';
+import { requireAction } from './auth';
+import { audit } from './audit';
+import { PermissionError } from './permissions';
 import { db } from './db';
 import { MAX_BG_BYTES, MAX_LOGO_BYTES, isTheme, isVoucherTemplate, validImage, voucherOptions } from './design';
 
@@ -10,7 +12,9 @@ const field = (fd: FormData, name: string) => String(fd.get(name) ?? '').trim();
 
 /** Saves the captive portal design. An empty image field keeps the saved image; "remove" clears it. */
 export async function savePortalDesign(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await requireAction('portal.design').catch((e) => e);
+  if (ctx instanceof PermissionError) return { error: ctx.message };
+  const { workspace } = ctx;
   const theme = field(fd, 'theme');
   if (!isTheme(theme)) return { error: 'Choose a template.' };
   const color = field(fd, 'brandColor');
@@ -47,12 +51,15 @@ export async function savePortalDesign(_: FormState, fd: FormData): Promise<Form
       supportPhone: field(fd, 'supportPhone').slice(0, 30) || null,
     },
   });
+  await audit(ctx, 'design.portal', `Template: ${theme}`);
   revalidatePath('/dashboard', 'layout');
   return { ok: 'Saved. Phones on your Wi-Fi see the new design right away.' };
 }
 
 export async function saveVoucherDesign(_: FormState, fd: FormData): Promise<FormState> {
-  const { workspace } = await requireWorkspace();
+  const ctx = await requireAction('vouchers.design').catch((e) => e);
+  if (ctx instanceof PermissionError) return { error: ctx.message };
+  const { workspace } = ctx;
   const template = field(fd, 'template');
   if (!isVoucherTemplate(template)) return { error: 'Choose a template.' };
   const options = voucherOptions({
@@ -66,6 +73,7 @@ export async function saveVoucherDesign(_: FormState, fd: FormData): Promise<For
     footer: field(fd, 'footer'),
   });
   await db.workspace.update({ where: { id: workspace.id }, data: { voucherTemplate: template, voucherOptions: options } });
+  await audit(ctx, 'design.vouchers', `Template: ${template}`);
   revalidatePath('/dashboard/vouchers', 'layout');
   return { ok: 'Saved. Every voucher sheet now prints with this design.' };
 }

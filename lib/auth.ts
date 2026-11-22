@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { db } from './db';
+import { can, PermissionError, type Permission } from './permissions';
 
 const COOKIE = 'incnet_session';
 const MAX_AGE = 60 * 60 * 24 * 30;
@@ -38,11 +39,33 @@ export const currentUser = cache(async () => {
   }
 });
 
-/** The signed-in user and their workspace. Sends anyone else to the sign-in page. */
+export const WORKSPACE_COOKIE = 'incnet_ws';
+
+/**
+ * The signed-in user, the workspace they are working in, and their role there.
+ * People in several businesses switch with the menu; the choice is remembered in a cookie.
+ */
 export const requireWorkspace = cache(async () => {
   const user = await currentUser();
   if (!user) redirect('/login');
-  const member = await db.member.findFirst({ where: { userId: user.id }, include: { workspace: true }, orderBy: { createdAt: 'asc' } });
-  if (!member) redirect('/signup?step=workspace');
+  const chosen = (await cookies()).get(WORKSPACE_COOKIE)?.value;
+  const member =
+    (chosen && (await db.member.findFirst({ where: { userId: user.id, workspaceId: chosen }, include: { workspace: true } }))) ||
+    (await db.member.findFirst({ where: { userId: user.id }, include: { workspace: true }, orderBy: { createdAt: 'asc' } }));
+  if (!member) redirect('/no-workspace');
   return { user, workspace: member.workspace, role: member.role };
 });
+
+/** For pages: the workspace context, or the "no access" page when the role does not allow it. */
+export async function requirePage(perm: Permission) {
+  const ctx = await requireWorkspace();
+  if (!can(ctx.role, perm)) redirect('/dashboard/no-access');
+  return ctx;
+}
+
+/** For actions: the workspace context, or a PermissionError the form shows as a message. */
+export async function requireAction(perm: Permission) {
+  const ctx = await requireWorkspace();
+  if (!can(ctx.role, perm)) throw new PermissionError();
+  return ctx;
+}

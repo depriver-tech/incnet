@@ -1,16 +1,19 @@
+import { getT } from '@/lib/lang';
 import Link from 'next/link';
 import { AccessBadge } from '@/components/Badges';
 import { revokeAccess } from '@/lib/actions';
 import { Palette } from 'lucide-react';
 import { VoucherForm } from './VoucherForm';
-import { requireWorkspace } from '@/lib/auth';
+import { can } from '@/lib/permissions';
+import { requirePage } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { dateTime, duration, money } from '@/lib/format';
 
 export const metadata = { title: 'Vouchers' };
 
 export default async function Vouchers({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requirePage('vouchers.create');
+  const t = await getT();
   const { q } = await searchParams;
   const query = (q || '').trim().toUpperCase();
   const [packages, sites, batches, found] = await Promise.all([
@@ -23,8 +26,8 @@ export default async function Vouchers({ searchParams }: { searchParams: Promise
   return (
     <>
       <div className="page-head">
-        <div><h1>Vouchers</h1><p>Print codes to sell at the counter. Each code works once, on one router, and its time starts on first use.</p></div>
-        <Link className="btn btn-ghost" href="/dashboard/vouchers/design"><Palette size={16} /> Design vouchers</Link>
+        <div><h1>{t('vouchers.title')}</h1><p>Print codes to sell at the counter. Each code works once, on one router, and its time starts on first use.</p></div>
+        {can(role, 'vouchers.design') && <Link className="btn btn-ghost" href="/dashboard/vouchers/design"><Palette size={16} /> Design vouchers</Link>}
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'minmax(280px, 1fr) minmax(0, 1.6fr)', alignItems: 'start' }}>
         <section className="card">
@@ -47,7 +50,7 @@ export default async function Vouchers({ searchParams }: { searchParams: Promise
                     <td className="mono"><strong>{a.code}</strong><div className="muted small" style={{ fontFamily: 'var(--font-body)' }}>{a.package.name} · {a.kind === 'payment' ? `paid by ${a.phone}` : 'voucher'}</div></td>
                     <td><AccessBadge status={a.status} /></td>
                     <td className="muted small">{a.expiresAt ? `Ends ${dateTime(a.expiresAt)}` : '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{['unused', 'active'].includes(a.status) && <form action={revokeAccess}><input type="hidden" name="id" value={a.id} /><button className="btn btn-danger btn-sm">Cancel</button></form>}</td>
+                    <td style={{ textAlign: 'right' }}>{can(role, 'vouchers.revoke') && ['unused', 'active'].includes(a.status) && <form action={revokeAccess}><input type="hidden" name="id" value={a.id} /><button className="btn btn-danger btn-sm">Cancel</button></form>}</td>
                   </tr>
                 ))}
               </tbody></table></div>

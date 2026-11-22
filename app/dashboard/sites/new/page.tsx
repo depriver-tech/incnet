@@ -1,8 +1,10 @@
+import { requirePage } from '@/lib/auth';
 import { NewSiteForm } from './NewSiteForm';
 
 export const metadata = { title: 'Add router' };
 
-export default function NewSite() {
+export default async function NewSite() {
+  await requirePage('routers.manage');
   return (
     <>
       <div className="page-head"><div><h1>Add a router</h1><p>Pick your hardware. incnet writes the setup for you.</p></div></div>

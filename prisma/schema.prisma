@@ -17,6 +17,8 @@ model User {
   createdAt    DateTime @default(now())
 
   memberships Member[]
+  invitesSent Invite[]   @relation("InviteCreator")
+  auditLogs   AuditLog[]
 }
 
 /// A business that runs one or more hotspots. Everything below belongs to a workspace.
@@ -57,6 +59,8 @@ model Workspace {
   accesses Access[]
   batches  VoucherBatch[]
   payments Payment[]
+  invites  Invite[]
+  auditLogs AuditLog[]
 }
 
 model Member {
@@ -65,7 +69,7 @@ model Member {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  role        String    @default("owner") // owner | staff
+  role        String    @default("owner") // owner | admin | manager | cashier | viewer (see lib/permissions.ts)
   createdAt   DateTime  @default(now())
 
   @@unique([userId, workspaceId])
@@ -199,4 +203,35 @@ model Payment {
 
   @@index([workspaceId, createdAt])
   @@index([status])
+}
+
+/// A link that lets someone join a workspace with a given role. Shared by the owner; no email server needed.
+model Invite {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role        String
+  label       String? // who it is for, e.g. "Asha (front desk)"
+  tokenHash   String    @unique
+  createdById String?
+  createdBy   User?     @relation("InviteCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+/// Who did what, for the team activity log.
+model AuditLog {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action      String // e.g. vouchers.create, package.save, team.invite
+  detail      String
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
 }
