@@ -8,7 +8,7 @@ export const IS_CLOUD = process.env.INCNET_CLOUD === 'true';
 /** Self-hosted installs only let the first person sign up, unless ALLOW_SIGNUP=true. */
 export const ALLOW_SIGNUP = IS_CLOUD || process.env.ALLOW_SIGNUP === 'true';
 
-export const SOURCE_URL = process.env.SOURCE_URL || 'https://github.com/incpritech/incnet';
+export const SOURCE_URL = process.env.SOURCE_URL || 'https://github.com/depriver-tech/incnet';
 
 /** How often the router checks in, in seconds. Lower means faster logins after payment. */
 export const SYNC_INTERVAL = Math.max(2, Number(process.env.ROUTER_SYNC_SECONDS) || 4);

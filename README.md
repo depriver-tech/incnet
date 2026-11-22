@@ -38,7 +38,7 @@ You need:
 - HTTPS in front of it (Caddy is the simplest)
 
 ```bash
-git clone https://github.com/incpritech/incnet.git
+git clone https://github.com/depriver-tech/incnet.git
 cd incnet
 cp .env.example .env
 # Edit .env: set APP_URL to your https address, and APP_SECRET to the output of: openssl rand -base64 48
