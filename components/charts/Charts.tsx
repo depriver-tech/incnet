@@ -135,3 +135,32 @@ export function Delta({ value, suffix }: { value: number | null; suffix: string 
   const cls = value > 0 ? 'up' : value < 0 ? 'down' : '';
   return <span className={`delta ${cls}`}>{value > 0 ? '▲' : value < 0 ? '▼' : '■'} {Math.abs(value)}% <em>{suffix}</em></span>;
 }
+
+/** One series over time (signups, platform volume). The title names it, so no legend box. */
+export function SingleBars({ data, unit, money: isMoney }: { data: { label: string; value: number }[]; unit: string; money?: boolean }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const nice = niceMax(Math.max(1, ...data.map((d) => d.value)));
+  const W = 100 / Math.max(data.length, 1);
+  const every = Math.ceil(data.length / 8);
+  const fmt = (v: number) => (isMoney ? tsh(v) : `${v.toLocaleString('en-US')} ${unit}`);
+  return (
+    <div className="viz">
+      <div className="viz-plot" style={{ height: 170 }} onMouseLeave={() => setHover(null)}>
+        <div className="viz-grid">{[1, 0.5, 0].map((g) => <div key={g}><span>{short(Math.round(nice * g))}</span></div>)}</div>
+        <div className="viz-bars">
+          {data.map((d, i) => (
+            <div key={d.label + i} className={`viz-col${hover === i ? ' on' : ''}`} style={{ width: `${W}%` }} onMouseEnter={() => setHover(i)} tabIndex={0} aria-label={`${d.label}: ${fmt(d.value)}`}>
+              <div className="viz-stack" style={{ height: `${(d.value / nice) * 100}%` }}>{d.value > 0 && <span style={{ flexGrow: 1, background: 'var(--series-1)' }} />}</div>
+            </div>
+          ))}
+        </div>
+        {hover !== null && data[hover] && (
+          <div className="viz-tip" style={{ left: `${Math.min(Math.max((hover + 0.5) * W, 12), 88)}%`, minWidth: 140 }}>
+            <strong>{data[hover].label}</strong><span className="viz-tip-total">{fmt(data[hover].value)}</span>
+          </div>
+        )}
+      </div>
+      <div className="viz-x">{data.map((d, i) => <span key={d.label + i} style={{ width: `${W}%` }}>{i % every === 0 ? d.label : ''}</span>)}</div>
+    </div>
+  );
+}

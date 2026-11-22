@@ -24,4 +24,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   'team.role': 'Changed a role',
   'team.remove': 'Removed a team member',
   'team.leave': 'Left the team',
+  'platform.plan': 'Platform changed the plan',
+  'platform.suspend': 'Platform suspended the business',
+  'platform.resume': 'Platform lifted the suspension',
 };

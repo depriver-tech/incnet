@@ -35,6 +35,13 @@ export default async function PortalPage({ params, searchParams }: { params: Pro
   const q = await searchParams;
   const site = await db.site.findUnique({ where: { slug }, include: { workspace: true } });
   if (!site) notFound();
+  if (site.workspace.suspendedAt) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, fontFamily: 'system-ui, sans-serif', textAlign: 'center', color: '#3a4446' }}>
+        <div><h1 style={{ fontSize: 20, marginBottom: 8 }}>{site.workspace.name} Wi-Fi</h1><p>Wi-Fi sales are paused right now. Please ask staff for help.<br />Mauzo ya Wi-Fi yamesimamishwa kwa sasa. Tafadhali muulize mhudumu.</p></div>
+      </div>
+    );
+  }
   const pay = providerFor(site.workspace);
 
   const ip = q.ip || q.clientip || null;

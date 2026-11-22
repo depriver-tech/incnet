@@ -10,6 +10,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (throttled(`voucher:${slug}:${clientIp(req)}`, 10)) return json({ error: 'Too many tries. Wait a minute and try again.' }, 429);
   const site = await portalSite(slug);
   if (!site) return json({ error: 'This hotspot was not found.' }, 404);
+  if (site.workspace.suspendedAt) return json({ error: 'Wi-Fi sales are paused right now. Please ask staff for help.' }, 403);
   const body = await req.json().catch(() => ({}));
   try {
     const access = await redeemCode(site, String(body?.code ?? ''), cleanMac(body?.mac), cleanIp(body?.ip));

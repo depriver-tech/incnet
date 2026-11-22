@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Fonts />
       <aside className="side">
         <Link href="/dashboard" className="logo display accent"><img src="/logo.svg" alt="" /> incnet</Link>
-        <SideNav role={role} admin={user.isAdmin && IS_CLOUD} />
+        <SideNav role={role} admin={user.isAdmin} />
         <div className="foot">
           {memberships.length > 1 ? (
             <form action={switchWorkspace} className="ws-switch">

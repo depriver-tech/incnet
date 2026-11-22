@@ -53,6 +53,8 @@ export const requireWorkspace = cache(async () => {
     (chosen && (await db.member.findFirst({ where: { userId: user.id, workspaceId: chosen }, include: { workspace: true } }))) ||
     (await db.member.findFirst({ where: { userId: user.id }, include: { workspace: true }, orderBy: { createdAt: 'asc' } }));
   if (!member) redirect('/no-workspace');
+  // A suspended business is locked out; platform admins can still look in.
+  if (member.workspace.suspendedAt && !user.isAdmin) redirect('/suspended');
   return { user, workspace: member.workspace, role: member.role };
 });
 

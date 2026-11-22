@@ -13,6 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (throttled(`pay:${slug}:${clientIp(req)}`, 5)) return json({ error: 'Too many payment requests. Wait a minute and try again.' }, 429);
   const site = await portalSite(slug);
   if (!site) return json({ error: 'This hotspot was not found.' }, 404);
+  if (site.workspace.suspendedAt) return json({ error: 'Wi-Fi sales are paused right now. Please ask staff for help.' }, 403);
   const p = providerFor(site.workspace);
   if (!p) return json({ error: 'Mobile payments are not available here yet. Ask staff for a voucher.' }, 400);
 

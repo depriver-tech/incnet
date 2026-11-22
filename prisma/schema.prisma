@@ -32,6 +32,8 @@ model Workspace {
   welcomeText  String?
   timezone     String   @default("Africa/Dar_es_Salaam")
   isDemo       Boolean  @default(false) // a throwaway workspace from "Try the live demo"
+  suspendedAt   DateTime? // set by a platform admin: dashboard and Wi-Fi page are blocked
+  suspendReason String?
 
   // Captive portal design
   portalTheme    String  @default("modern") // modern | minimal | bold | classic | photo
@@ -229,7 +231,7 @@ model AuditLog {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId      String?
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action      String // e.g. vouchers.create, package.save, team.invite
+  action      String // e.g. vouchers.create, package.save, team.invite, platform.plan
   detail      String
   createdAt   DateTime  @default(now())
 
