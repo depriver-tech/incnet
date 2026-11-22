@@ -63,7 +63,7 @@ const en: Content = {
   faq: [
     ['Which routers work?', 'Any MikroTik on RouterOS 7, a Raspberry Pi (3B+, 4 or 5), or any router running OpenWrt. Access points of any brand plug in behind them. No hardware yet? Start with the built-in simulator.'],
     ['Do I need a public IP, VPN or port forwarding?', 'No. The router calls incnet every few seconds over HTTPS, so it works behind any internet provider, including mobile data links.'],
-    ['How do customers pay?', 'They pick a package on the Wi-Fi page, type their number and confirm with their PIN on M-Pesa, Mixx by Yas, Airtel Money or Halotel. They are online seconds later, with no staff involved. Printed vouchers work too.'],
+    ['How do customers pay?', 'They pick a package on the Wi-Fi page, type their number and confirm with their PIN on M-Pesa, Mixx by Yas, Airtel Money or HaloPesa. They are online seconds later, with no staff involved. Printed vouchers work too.'],
     ['Where does the money go?', 'Straight to your own payment account (incpesa or Snippe). incnet never holds your money.'],
     ['Can my staff use it without seeing everything?', 'Yes. Invite them with a link and pick a role: cashiers only make and look up vouchers, viewers only see reports. Every change is in the activity log.'],
     ['Can I run it on my own server?', 'Yes. incnet is open source under AGPL-3.0. Deploy it to Vercel in one click, install it on a VPS or Raspberry Pi with one command, or upload a ready-made zip to shared hosting (cPanel, Plesk, Hostinger).'],
@@ -123,7 +123,7 @@ const sw: Content = {
   faq: [
     ['Ruta zipi zinafanya kazi?', 'MikroTik yoyote yenye RouterOS 7, Raspberry Pi (3B+, 4 au 5), au ruta yoyote yenye OpenWrt. Access point za chapa yoyote zinaunganishwa nyuma yake. Huna kifaa bado? Anza na kiigaji.'],
     ['Ninahitaji IP ya umma, VPN au port forwarding?', 'Hapana. Ruta inawasiliana na incnet kila baada ya sekunde chache kwa HTTPS, hivyo inafanya kazi na mtoa huduma yeyote wa intaneti, hata kwa data ya simu.'],
-    ['Wateja wanalipaje?', 'Wanachagua kifurushi kwenye ukurasa wa Wi-Fi, wanaandika namba yao na kuthibitisha kwa PIN kwenye M-Pesa, Mixx by Yas, Airtel Money au Halotel. Wanaingia mtandaoni ndani ya sekunde, bila mhudumu. Vocha za karatasi pia zinafanya kazi.'],
+    ['Wateja wanalipaje?', 'Wanachagua kifurushi kwenye ukurasa wa Wi-Fi, wanaandika namba yao na kuthibitisha kwa PIN kwenye M-Pesa, Mixx by Yas, Airtel Money au HaloPesa. Wanaingia mtandaoni ndani ya sekunde, bila mhudumu. Vocha za karatasi pia zinafanya kazi.'],
     ['Pesa zinaenda wapi?', 'Moja kwa moja kwenye akaunti yako ya malipo (incpesa au Snippe). incnet haishiki pesa zako.'],
     ['Wafanyakazi wangu wanaweza kuitumia bila kuona kila kitu?', 'Ndiyo. Waalike kwa kiungo na uchague jukumu: keshia anatengeneza na kutafuta vocha tu, mtazamaji anaona ripoti tu. Kila badiliko linaandikwa kwenye kumbukumbu.'],
     ['Ninaweza kuiendesha kwenye seva yangu?', 'Ndiyo. incnet ni programu huria chini ya AGPL-3.0. Iweke Vercel kwa kubofya mara moja, isakinishe kwenye VPS au Raspberry Pi kwa amri moja, au pakia zip iliyo tayari kwenye hosting ya pamoja (cPanel, Plesk, Hostinger).'],

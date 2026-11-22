@@ -59,7 +59,7 @@ export default async function Home() {
             <Link className="btn btn-lg" href={user ? '/dashboard' : '/signup'}>{user ? t('lp.openDash') : t('lp.start')} <ArrowRight size={17} /></Link>
             {demoButton('btn btn-lg btn-ghost', t('lp.demo'))}
           </div>
-          <p className="lp-trust"><Check size={14} /> {t('lp.noCard')} <span>·</span> <Check size={14} /> {t('lp.anyIsp')} <span>·</span> <Check size={14} /> M-Pesa, Mixx by Yas, Airtel Money, Halotel</p>
+          <p className="lp-trust"><Check size={14} /> {t('lp.noCard')} <span>·</span> <Check size={14} /> {t('lp.anyIsp')} <span>·</span> <Check size={14} /> M-Pesa, Mixx by Yas, Airtel Money, HaloPesa</p>
         </div>
         <div className="lp-stage wrap">
           <HeroDashboard />

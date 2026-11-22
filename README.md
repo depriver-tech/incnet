@@ -1,6 +1,6 @@
 # incnet
 
-Open-source hotspot billing for **MikroTik, Raspberry Pi and OpenWrt**. Sell Wi-Fi packages at a café, hostel or shop with printed vouchers and mobile money (M-Pesa, Mixx by Yas, Airtel Money, Halotel). You set up the router with **one paste**.
+Open-source hotspot billing for **MikroTik, Raspberry Pi and OpenWrt**. Sell Wi-Fi packages at a café, hostel or shop with printed vouchers and mobile money (M-Pesa, Mixx by Yas, Airtel Money, HaloPesa). You set up the router with **one paste**.
 
 ![incnet dashboard](public/screens/dashboard.png)
 

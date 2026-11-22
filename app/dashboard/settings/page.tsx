@@ -48,7 +48,7 @@ export default async function Settings() {
               <label className="field">Take payments with
                 <select name="provider" defaultValue={workspace.paymentProvider}>
                   <option value="none">Off, vouchers only</option>
-                  <option value="incpesa">incpesa (M-Pesa, Mixx by Yas, Airtel Money, Halotel)</option>
+                  <option value="incpesa">incpesa (M-Pesa, Mixx by Yas, Airtel Money, HaloPesa)</option>
                   <option value="snippe">Snippe, with my own account</option>
                   <option value="test">Test mode (no real money)</option>
                 </select>

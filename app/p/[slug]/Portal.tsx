@@ -12,7 +12,7 @@ type Phase = { kind: 'idle' } | { kind: 'paying'; paymentId: string } | { kind: 
 
 const T = {
   en: {
-    haveCode: 'Have a voucher?', codePh: 'Enter code', connect: 'Connect', buy: 'Buy a package', phone: 'Mobile money number', pay: 'Pay', with: 'M-Pesa · Mixx by Yas · Airtel Money · Halotel',
+    haveCode: 'Have a voucher?', codePh: 'Enter code', connect: 'Connect', buy: 'Buy a package', phone: 'Mobile money number', pay: 'Pay', with: 'M-Pesa · Mixx by Yas · Airtel Money · HaloPesa',
     paying: 'Check your phone', payingText: 'Enter your PIN on the prompt to pay. Keep this page open.', syncing: 'Connecting you…', syncingText: 'Your Wi-Fi is being switched on. This takes a few seconds.',
     ready: "You're connected", readyText: 'Enjoy the internet.', yourCode: 'Your code', keepCode: 'Keep this code to reconnect later.', tryAgain: 'Cancel',
     noPay: 'Buy a voucher from staff to get online.', min: 'Mobile money starts at', choose: 'Choose a package first.', offline: 'The router is offline right now. Your time is saved; ask staff for help.',
@@ -23,7 +23,7 @@ const T = {
     voucherHint: 'Find the code on your printed voucher, or scan its QR code.', pick: 'Choose a package',
   },
   sw: {
-    haveCode: 'Una vocha?', codePh: 'Weka namba ya vocha', connect: 'Unganisha', buy: 'Nunua kifurushi', phone: 'Namba ya simu ya kulipia', pay: 'Lipa', with: 'M-Pesa · Mixx by Yas · Airtel Money · Halotel',
+    haveCode: 'Una vocha?', codePh: 'Weka namba ya vocha', connect: 'Unganisha', buy: 'Nunua kifurushi', phone: 'Namba ya simu ya kulipia', pay: 'Lipa', with: 'M-Pesa · Mixx by Yas · Airtel Money · HaloPesa',
     paying: 'Angalia simu yako', payingText: 'Weka PIN kwenye ujumbe ili kulipa. Usifunge ukurasa huu.', syncing: 'Tunakuunganisha…', syncingText: 'Wi-Fi yako inawashwa. Subiri sekunde chache.',
     ready: 'Umeunganishwa', readyText: 'Furahia intaneti.', yourCode: 'Namba yako', keepCode: 'Hifadhi namba hii ili kuunganisha tena.', tryAgain: 'Ghairi',
     noPay: 'Nunua vocha kwa mhudumu ili kuunganishwa.', min: 'Malipo ya simu yanaanzia', choose: 'Chagua kifurushi kwanza.', offline: 'Ruta haipo hewani kwa sasa. Muda wako umehifadhiwa; muulize mhudumu.',
@@ -36,6 +36,25 @@ const T = {
 };
 
 const STORE = 'incnet-last-code';
+
+/** Mobile money networks. Official logos go in public/networks/; until a file is there, the name shows instead. */
+const NETWORKS = [
+  { id: 'mpesa', name: 'M-Pesa', cls: 'n-mpesa' },
+  { id: 'mixx', name: 'Mixx by Yas', cls: 'n-mixx' },
+  { id: 'airtel', name: 'Airtel Money', cls: 'n-airtel' },
+  { id: 'halopesa', name: 'HaloPesa', cls: 'n-halo' },
+];
+
+function NetworkLogos({ label }: { label: string }) {
+  const [missing, setMissing] = useState<Record<string, boolean>>({});
+  return (
+    <div className="p-nets" aria-label={label}>
+      {NETWORKS.map((n) => missing[n.id]
+        ? <span key={n.id} className={n.cls}>{n.name}</span>
+        : <img key={n.id} className="p-net-logo" src={`/networks/${n.id}.svg`} alt={n.name} title={n.name} onError={() => setMissing((m) => ({ ...m, [n.id]: true }))} />)}
+    </div>
+  );
+}
 
 export function Portal(props: { slug: string; business: string; design: PortalDesign; payments: boolean; minPayment: number; packages: PortalPkg[]; ctx: PortalCtx; preview?: boolean }) {
   const { slug, ctx, design, preview } = props;
@@ -173,7 +192,7 @@ export function Portal(props: { slug: string; business: string; design: PortalDe
                 {props.payments ? (
                   <form onSubmit={(e) => { e.preventDefault(); pay(); }} className="p-pay">
                     <label>{t.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="07XX XXX XXX" autoComplete="tel" /></label>
-                    <div className="p-nets" aria-label={t.with}><span className="n-mpesa">M-Pesa</span><span className="n-mixx">Mixx by Yas</span><span className="n-airtel">Airtel Money</span><span className="n-halo">Halotel</span></div>
+                    <NetworkLogos label={t.with} />
                     {selected && selected.price < props.minPayment && <p className="p-note">{t.min} TSh {props.minPayment}</p>}
                     <button className="p-btn p-big" disabled={busy}>{busy ? <span className="p-dots" /> : `${t.pay} ${selected?.priceLabel ?? ''}`}</button>
                     <p className="p-secure"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4Zm-1 15-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7Z" /></svg>{t.secure}</p>
@@ -313,6 +332,7 @@ const PORTAL_CSS = `
 .p-pop{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--accent);color:#fff;font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.02em;vertical-align:2px}
 .p-nets{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
 .p-nets span{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid var(--line);background:var(--card);white-space:nowrap}
+.p-net-logo{height:26px;width:auto;max-width:84px;object-fit:contain;padding:3px 6px;border-radius:7px;background:#fff;border:1px solid var(--line)}
 .n-mpesa{color:#d0312d}.n-mixx{color:#1d4ed8}.n-airtel{color:#e11d2b}.n-halo{color:#ea7a12}
 .p-secure{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:12px;margin:0;text-align:center}
 .p-secure svg{color:#1f9d55;flex:none}

@@ -41,7 +41,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
     { done: sites.length > 0, title: 'Add your router', text: 'Name the venue and copy one script into your router.', href: sites[0] ? `/dashboard/sites/${sites[0].id}` : '/dashboard/sites/new', cta: 'Add router' },
     { done: online, title: 'Router online', text: 'The router checks in with incnet by itself after the script runs.', href: sites[0] ? `/dashboard/sites/${sites[0].id}` : '/dashboard/sites/new', cta: 'See setup' },
     { done: packages > 0, title: 'Set your prices', text: 'Starter packages are ready. Change names, prices and speeds.', href: '/dashboard/packages', cta: 'Packages' },
-    { done: workspace.paymentProvider !== 'none', title: 'Turn on mobile money (optional)', text: 'Customers pay with M-Pesa, Mixx by Yas, Airtel Money or Halotel and get online by themselves.', href: '/dashboard/settings', cta: 'Payments' },
+    { done: workspace.paymentProvider !== 'none', title: 'Turn on mobile money (optional)', text: 'Customers pay with M-Pesa, Mixx by Yas, Airtel Money or HaloPesa and get online by themselves.', href: '/dashboard/settings', cta: 'Payments' },
     { done: vouchers > 0, title: 'Print vouchers (optional)', text: 'Sell codes at the counter, even without mobile money.', href: '/dashboard/vouchers', cta: 'Vouchers' },
   ];
   const remaining = can(role, 'routers.manage') ? steps.filter((s) => !s.done).length : 0;
