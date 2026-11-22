@@ -4,6 +4,8 @@ import { currentUser } from '@/lib/auth';
 import { IS_CLOUD, PLANS, SOURCE_URL } from '@/lib/config';
 import { startDemo } from '@/lib/demo';
 import { money } from '@/lib/format';
+import { HeroDashboard } from '@/components/landing/HeroDashboard';
+import { Portal } from './p/[slug]/Portal';
 
 const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Syne+Mono&display=swap';
 const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/depriver-tech/incnet/main/scripts/install.sh | sudo DOMAIN=wifi.example.com bash';
@@ -39,10 +41,9 @@ export default async function Home() {
       </header>
 
       <section className="lp-hero">
-        <div className="lp-hero-bg" aria-hidden />
         <div className="wrap lp-hero-inner">
           <a className="lp-pill" href={SOURCE_URL} target="_blank" rel="noreferrer"><GitBranch size={13} /> Open source · MikroTik · Raspberry Pi · OpenWrt <ArrowRight size={13} /></a>
-          <h1>Sell Wi-Fi like a pro.<br /><span className="lp-grad">Set it up in one paste.</span></h1>
+          <h1>Sell Wi-Fi like a pro.<br /><span className="accent">Set it up in one paste.</span></h1>
           <p className="lp-lead">incnet runs paid hotspots for cafés, hostels, shops and estates. Customers pay with mobile money or a voucher and get online by themselves. Your router is set up with one script.</p>
           <div className="lp-cta">
             <Link className="btn btn-lg" href={user ? '/dashboard' : '/signup'}>{user ? 'Open dashboard' : 'Start free'} <ArrowRight size={17} /></Link>
@@ -50,15 +51,24 @@ export default async function Home() {
           </div>
           <p className="lp-trust"><Check size={14} /> No card needed <span>·</span> <Check size={14} /> Works behind any ISP <span>·</span> <Check size={14} /> M-Pesa, Mixx by Yas, Airtel Money, Halotel</p>
 
-          <div className="lp-shot">
-            <div className="lp-browser">
-              <div className="lp-browser-bar"><i /><i /><i /><span>incnet.incpritech.com/dashboard</span></div>
-              <picture>
-                <source srcSet="/screens/dashboard-dark.png" media="(prefers-color-scheme: dark)" />
-                <img src="/screens/dashboard.png" alt="The incnet dashboard: sales today, connected codes, routers and recent payments" width={1800} height={1125} />
-              </picture>
-            </div>
-            <div className="lp-phone"><img src="/screens/portal-modern.png" alt="The Wi-Fi page a customer sees on their phone" width={390} height={844} /></div>
+        </div>
+        <div className="lp-stage wrap">
+          <HeroDashboard />
+          <div className="lp-phone">
+            <Portal
+              preview
+              slug="demo"
+              business="Mlimani Café"
+              design={{ theme: 'modern', color: '#0f9d8f', logo: null, bg: null, headline: 'Fast Wi-Fi for our guests', welcome: null, terms: null, lang: 'en', supportPhone: null }}
+              payments
+              minPayment={0}
+              packages={[
+                { id: 'h', name: '1 hour', price: 500, priceLabel: 'TSh 500', duration: '1 hour', speed: '5 Mbps', data: null },
+                { id: 'd', name: '1 day', price: 1000, priceLabel: 'TSh 1,000', duration: '1 day', speed: '5 Mbps', data: null },
+                { id: 'w', name: '1 week', price: 5000, priceLabel: 'TSh 5,000', duration: '7 days', speed: '8 Mbps', data: null },
+              ]}
+              ctx={{ mac: null, ip: null, handoff: { kind: 'none' }, dst: null, err: null, code: null }}
+            />
           </div>
         </div>
       </section>
