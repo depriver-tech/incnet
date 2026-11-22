@@ -1,14 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
 import { StatusBadge } from '@/components/RouterStatus';
-import { PayBadge } from '@/components/Badges';
 import { AUDIT_LABELS } from '@/lib/audit';
 import { deleteWorkspace, resumeWorkspace, setPlan, suspendWorkspace } from '@/lib/admin-actions';
 import { PLANS } from '@/lib/config';
 import { db } from '@/lib/db';
 import { ago, dateTime, money } from '@/lib/format';
-import { maskPhone } from '@/lib/phone';
 import { ROLE_INFO, type Role } from '@/lib/permissions';
 
 export const metadata = { title: 'Business' };
@@ -27,13 +25,28 @@ export default async function AdminWorkspace({ params, searchParams }: { params:
   });
   if (!w) notFound();
   const tz = w.timezone;
-  const [vol30, volAll, payments, logs, activeCodes] = await Promise.all([
-    db.payment.aggregate({ where: { workspaceId: id, status: 'completed', completedAt: { gte: new Date(Date.now() - 30 * DAY) } }, _sum: { amount: true }, _count: true }),
+  // Totals and setup only. Individual sales, customers and the team's own activity stay private to the business.
+  const since30 = new Date(Date.now() - 30 * DAY);
+  const [vol30, volAll, outcomes, lastSale, logs, activeCodes] = await Promise.all([
+    db.payment.aggregate({ where: { workspaceId: id, status: 'completed', completedAt: { gte: since30 } }, _sum: { amount: true }, _count: true }),
     db.payment.aggregate({ where: { workspaceId: id, status: 'completed' }, _sum: { amount: true }, _count: true }),
-    db.payment.findMany({ where: { workspaceId: id }, orderBy: { createdAt: 'desc' }, take: 8, include: { package: { select: { name: true } } } }),
-    db.auditLog.findMany({ where: { workspaceId: id }, orderBy: { createdAt: 'desc' }, take: 12, include: { user: { select: { name: true } } } }),
+    db.payment.groupBy({ by: ['status'], where: { workspaceId: id, createdAt: { gte: since30 } }, _count: true }),
+    db.payment.aggregate({ where: { workspaceId: id, status: 'completed' }, _max: { completedAt: true } }),
+    db.auditLog.findMany({ where: { workspaceId: id, action: { startsWith: 'platform.' } }, orderBy: { createdAt: 'desc' }, take: 12, include: { user: { select: { name: true } } } }),
     db.access.count({ where: { workspaceId: id, status: 'active', expiresAt: { gt: new Date() } } }),
   ]);
+  const oc = Object.fromEntries(outcomes.map((o) => [o.status, o._count])) as Record<string, number>;
+  const finished = (oc.completed ?? 0) + (oc.failed ?? 0) + (oc.expired ?? 0);
+  const rate = finished ? Math.round(((oc.completed ?? 0) / finished) * 100) : null;
+  const realSites = w.sites.filter((s) => s.kind !== 'simulated');
+  const checks = [
+    { ok: realSites.length > 0, label: realSites.length ? `${realSites.length} router${realSites.length > 1 ? 's' : ''} set up` : 'No router set up yet' },
+    { ok: realSites.length > 0 && realSites.every((s) => s.lastSeenAt && Date.now() - s.lastSeenAt.getTime() < 45_000), label: 'All routers checking in' },
+    { ok: w._count.packages > 0, label: `${w._count.packages} package${w._count.packages === 1 ? '' : 's'}` },
+    { ok: w.paymentProvider !== 'none' && w.paymentProvider !== 'test', label: w.paymentProvider === 'none' ? 'Vouchers only (no mobile money)' : w.paymentProvider === 'test' ? 'Mobile money still in test mode' : `Mobile money via ${w.paymentProvider}` },
+    { ok: rate === null || rate >= 50, label: rate === null ? 'No mobile money attempts in 30 days' : `${rate}% of payments succeed (30 days)` },
+    { ok: !(oc.needs_review ?? 0), label: oc.needs_review ? `${oc.needs_review} payment${oc.needs_review > 1 ? 's' : ''} with a wrong amount` : 'No amount mismatches' },
+  ];
   const owner = w.members.find((m) => m.role === 'owner');
 
   return (
@@ -45,6 +58,7 @@ export default async function AdminWorkspace({ params, searchParams }: { params:
           <p>Owner {owner?.user.name ?? '—'} · {owner?.user.email ?? ''} · joined {dateTime(w.createdAt, tz)}</p>
         </div>
       </div>
+      <p className="privacy-note"><Lock size={14} /> You see account status, totals and setup health. Sales, customers and the team&apos;s own activity belong to {w.name}.</p>
       {w.suspendedAt && <p className="notice warn" style={{ marginBottom: 16 }}>Suspended {dateTime(w.suspendedAt, tz)}: {w.suspendReason}. The dashboard and Wi-Fi page are blocked; customers already online keep their time.</p>}
 
       <div className="grid grid-4" style={{ marginBottom: 16 }}>
@@ -73,16 +87,14 @@ export default async function AdminWorkspace({ params, searchParams }: { params:
 
       <div className="grid grid-2" style={{ marginBottom: 16, alignItems: 'start' }}>
         <section className="card">
-          <div className="card-head"><h2>Recent payments</h2></div>
-          {payments.length === 0 ? <p className="empty">No payments yet.</p> : (
-            <table><tbody>{payments.map((p) => (
-              <tr key={p.id}><td><strong>{money(p.amount)}</strong><div className="muted small">{p.package.name} · {maskPhone(p.phone)}</div></td><td className="muted small">{dateTime(p.createdAt, tz)}</td><td style={{ textAlign: 'right' }}><PayBadge status={p.status} /></td></tr>
-            ))}</tbody></table>
-          )}
+          <div className="card-head"><h2>Setup health</h2><span className="muted small">last sale {lastSale._max.completedAt ? ago(lastSale._max.completedAt) : 'never'}</span></div>
+          <div className="card-pad stack" style={{ gap: 9 }}>
+            {checks.map((c) => <div key={c.label} className="row" style={{ gap: 9 }}><span className={`badge ${c.ok ? 'ok' : 'warn'}`}>{c.ok ? '✓' : '!'}</span><span className="small">{c.label}</span></div>)}
+          </div>
         </section>
         <section className="card">
-          <div className="card-head"><h2>Activity</h2></div>
-          {logs.length === 0 ? <p className="empty">Nothing yet.</p> : (
+          <div className="card-head"><h2>Console actions</h2><span className="muted small">the team&apos;s own activity stays private</span></div>
+          {logs.length === 0 ? <p className="empty">No console actions on this business yet.</p> : (
             <table><tbody>{logs.map((l) => (
               <tr key={l.id}><td><strong>{AUDIT_LABELS[l.action] ?? l.action.replace('platform.', 'Platform: ')}</strong><div className="muted small">{l.user?.name ?? '—'} · {l.detail}</div></td><td className="muted small" style={{ textAlign: 'right' }}>{ago(l.createdAt)}</td></tr>
             ))}</tbody></table>

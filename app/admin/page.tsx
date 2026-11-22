@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertTriangle, ArrowRight, Ban, CreditCard, FlaskConical, WifiOff } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Ban, CreditCard, FlaskConical, Lock, WifiOff } from 'lucide-react';
 import { SingleBars } from '@/components/charts/Charts';
 import { db } from '@/lib/db';
 import { dateTime, money } from '@/lib/format';
@@ -54,6 +54,7 @@ export default async function AdminOverview() {
   return (
     <>
       <div className="page-head"><div><h1>Platform overview</h1><p>Growth, money moving and what needs attention. Demo workspaces are left out of the numbers.</p></div></div>
+      <p className="privacy-note"><Lock size={14} /> The console is for running the platform: accounts, plans, router health and setup issues. Each business&apos;s sales and customers stay theirs; you only see totals.</p>
       <div className="grid grid-4" style={{ marginBottom: 16 }}>
         <div className="card card-pad kpi"><small>Businesses</small><strong>{workspaces.toLocaleString('en-US')}</strong><span className="muted small">+{signups7} this week · {pro} on Business</span></div>
         <div className="card card-pad kpi"><small>Active this week</small><strong>{activeWs.toLocaleString('en-US')}</strong><span className="muted small">made a sale in the last 7 days</span></div>

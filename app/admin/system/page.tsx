@@ -4,8 +4,7 @@ import { ONLINE_MS } from '@/lib/admin';
 import { purgeDemos } from '@/lib/admin-actions';
 import { APP_URL, IS_CLOUD, SYNC_INTERVAL } from '@/lib/config';
 import { db } from '@/lib/db';
-import { ago, dateTime, money } from '@/lib/format';
-import { maskPhone } from '@/lib/phone';
+import { ago } from '@/lib/format';
 
 export const metadata = { title: 'System' };
 const DAY = 86_400_000;
@@ -17,7 +16,7 @@ export default async function AdminSystem() {
   try { await db.$queryRaw`SELECT 1`; } catch { dbOk = false; }
   const [offline, failed, providers, demos, oldDemos, platformLog] = await Promise.all([
     db.site.findMany({ where: { kind: { not: 'simulated' }, workspace: { isDemo: false }, OR: [{ lastSeenAt: null }, { lastSeenAt: { lt: new Date(now - ONLINE_MS) } }] }, orderBy: { lastSeenAt: 'desc' }, take: 25, include: { workspace: { select: { id: true, name: true } } } }),
-    db.payment.findMany({ where: { status: { in: ['failed', 'needs_review'] }, createdAt: { gte: new Date(now - DAY) } }, orderBy: { createdAt: 'desc' }, take: 25, include: { workspace: { select: { id: true, name: true, timezone: true } } } }),
+    db.payment.groupBy({ by: ['workspaceId', 'status'], where: { status: { in: ['failed', 'needs_review'] }, createdAt: { gte: new Date(now - DAY) }, workspace: { isDemo: false } }, _count: true }),
     db.workspace.groupBy({ by: ['paymentProvider'], where: { isDemo: false }, _count: true }),
     db.workspace.count({ where: { isDemo: true } }),
     db.workspace.count({ where: { isDemo: true, createdAt: { lt: new Date(now - DAY) } } }),
@@ -30,6 +29,11 @@ export default async function AdminSystem() {
     { ok: true, label: `Routers check in every ${SYNC_INTERVAL}s` },
     { ok: true, label: IS_CLOUD ? 'Hosted mode: plans, open sign-up and the live demo are on' : 'Self-hosted mode' },
   ];
+  // Failed payments as counts per business: enough to spot a broken setup, without anyone's sales or numbers.
+  const failedBy = new Map<string, { failed: number; review: number }>();
+  for (const f of failed) { const e = failedBy.get(f.workspaceId) ?? { failed: 0, review: 0 }; if (f.status === 'failed') e.failed += f._count; else e.review += f._count; failedBy.set(f.workspaceId, e); }
+  const failedNames = failedBy.size ? await db.workspace.findMany({ where: { id: { in: [...failedBy.keys()] } }, select: { id: true, name: true } }) : [];
+  const failedRows = failedNames.map((w) => ({ ...w, ...failedBy.get(w.id)! })).sort((a, b) => b.failed + b.review - (a.failed + a.review));
   const provName: Record<string, string> = { none: 'Vouchers only', incpesa: 'incpesa', snippe: 'Snippe', test: 'Test mode' };
   return (
     <>
@@ -64,9 +68,9 @@ export default async function AdminSystem() {
 
       <div className="grid grid-2" style={{ alignItems: 'start' }}>
         <section className="card">
-          <div className="card-head"><h2>Failed payments, 24 hours</h2><span className="muted small">{failed.length}</span></div>
-          {failed.length === 0 ? <p className="empty">None.</p> : (
-            <table><tbody>{failed.map((p) => <tr key={p.id}><td><strong>{money(p.amount)}</strong> <span className="muted small">{maskPhone(p.phone)}</span><div className="muted small">{p.failureReason ?? p.status}</div></td><td className="small"><Link className="accent" href={`/admin/businesses/${p.workspace.id}`}>{p.workspace.name}</Link><div className="muted">{dateTime(p.createdAt, p.workspace.timezone)}</div></td></tr>)}</tbody></table>
+          <div className="card-head"><h2>Failed payments, 24 hours</h2><span className="muted small">by business</span></div>
+          {failedRows.length === 0 ? <p className="empty">None.</p> : (
+            <table><tbody>{failedRows.map((r) => <tr key={r.id}><td><Link className="accent" href={`/admin/businesses/${r.id}`}><strong>{r.name}</strong></Link></td><td className="small">{r.failed} failed{r.review ? ` · ${r.review} wrong amount` : ''}</td></tr>)}</tbody></table>
           )}
         </section>
         <section className="card">
