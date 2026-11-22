@@ -36,4 +36,4 @@ export function siteLimit(plan: string) {
 
 /** One-click "Deploy with Vercel" for this repository. */
 export const VERCEL_DEPLOY_URL = 'https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdepriver-tech%2Fincnet&project-name=incnet&repository-name=incnet&env=APP_SECRET&envDescription=A%20long%20random%20string%20%2832%2B%20characters%29%20that%20signs%20sign-ins%20and%20encrypts%20payment%20keys&envLink=https%3A%2F%2Fgithub.com%2Fdepriver-tech%2Fincnet%2Fblob%2Fmain%2Fdocs%2Fvercel.md';
-export const RELEASES_URL = `${SOURCE_URL}/releases/latest`;
+export const RELEASES_URL = `${SOURCE_URL}/releases/latest/download/incnet-node.zip`;

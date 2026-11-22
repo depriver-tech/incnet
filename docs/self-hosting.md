@@ -39,7 +39,7 @@ cd /opt/incnet && docker compose logs -f app
 Any shared host with **Node.js 20+** works. Look for "Setup Node.js App", "Node.js" or "Application manager" in your control panel. PHP-only hosting can't run incnet.
 
 1. **Get a PostgreSQL database.** Most shared hosts offer only MySQL. Create a free Postgres database at Supabase or Neon and copy its connection string.
-2. **Download `incnet-node.zip`** from the [latest release](https://github.com/depriver-tech/incnet/releases/latest). Or build it yourself with `bash scripts/package-node.sh`.
+2. **Download `incnet-node.zip`** from the [latest release](https://github.com/depriver-tech/incnet/releases/latest/download/incnet-node.zip). Or build it yourself with `bash scripts/package-node.sh`.
 3. **Upload and unzip it** in your hosting account, for example to `~/incnet`, using the File Manager.
 4. **Create the Node.js app** with these settings:
    - Node 20 or newer
