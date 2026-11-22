@@ -6,9 +6,10 @@ import { duration, money, speed } from '@/lib/format';
 
 export const metadata = { title: 'Packages' };
 
-type Pkg = { id: string; name: string; price: number; durationMinutes: number; downKbps: number; upKbps: number; dataLimitMb: number | null; devices: number };
+type Pkg = { id: string; name: string; price: number; durationMinutes: number; downKbps: number; upKbps: number; dataLimitMb: number | null; devices: number; siteId: string | null };
+type SiteOpt = { id: string; name: string };
 
-function PackageFields({ pkg }: { pkg?: Pkg }) {
+function PackageFields({ pkg, sites }: { pkg?: Pkg; sites: SiteOpt[] }) {
   const minutes = pkg?.durationMinutes ?? 60;
   const [value, unit] = minutes % 1440 === 0 ? [minutes / 1440, 'days'] : minutes % 60 === 0 ? [minutes / 60, 'hours'] : [minutes, 'minutes'];
   return (
@@ -30,13 +31,24 @@ function PackageFields({ pkg }: { pkg?: Pkg }) {
         <label className="field">Data cap (GB)<input name="data" type="number" min={0} step="any" defaultValue={pkg?.dataLimitMb ? +(pkg.dataLimitMb / 1024).toFixed(2) : ''} placeholder="Unlimited" /></label>
         <label className="field">Devices per code<input name="devices" type="number" min={1} max={20} defaultValue={pkg?.devices ?? 1} /></label>
       </div>
+      {sites.length > 0 && (
+        <label className="field">Sold at
+          <select name="siteId" defaultValue={pkg?.siteId ?? ''}>
+            <option value="">Every router</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.name} only</option>)}
+          </select>
+        </label>
+      )}
     </>
   );
 }
 
 export default async function Packages() {
   const { workspace } = await requireWorkspace();
-  const packages = await db.package.findMany({ where: { workspaceId: workspace.id }, orderBy: [{ active: 'desc' }, { sort: 'asc' }, { price: 'asc' }] });
+  const [packages, sites] = await Promise.all([
+    db.package.findMany({ where: { workspaceId: workspace.id }, orderBy: [{ active: 'desc' }, { sort: 'asc' }, { price: 'asc' }], include: { site: { select: { name: true } } } }),
+    db.site.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true } }),
+  ]);
   return (
     <>
       <div className="page-head"><div><h1>Packages</h1><p>What customers can buy. Time starts when a code is first used.</p></div></div>
@@ -49,10 +61,10 @@ export default async function Packages() {
                 {packages.map((p) => (
                   <tr key={p.id} style={{ opacity: p.active ? 1 : 0.55 }}>
                     <td>
-                      <strong>{p.name}</strong><div className="muted small">{duration(p.durationMinutes)}</div>
+                      <strong>{p.name}</strong><div className="muted small">{duration(p.durationMinutes)} · {p.site ? `${p.site.name} only` : 'every router'}</div>
                       <details style={{ marginTop: 6 }}>
                         <summary className="small accent" style={{ cursor: 'pointer' }}>Edit</summary>
-                        <div style={{ marginTop: 10, minWidth: 280 }}><ActionForm action={savePackage}><PackageFields pkg={p} /><div><Submit className="btn btn-sm">Save</Submit></div></ActionForm></div>
+                        <div style={{ marginTop: 10, minWidth: 280 }}><ActionForm action={savePackage}><PackageFields pkg={p} sites={sites} /><div><Submit className="btn btn-sm">Save</Submit></div></ActionForm></div>
                       </details>
                     </td>
                     <td><strong>{money(p.price)}</strong></td>
@@ -69,7 +81,7 @@ export default async function Packages() {
         </section>
         <section className="card">
           <div className="card-head"><h2>Add a package</h2></div>
-          <div className="card-pad"><ActionForm action={savePackage} resetOnOk><PackageFields /><div><Submit>Add package</Submit></div></ActionForm></div>
+          <div className="card-pad"><ActionForm action={savePackage} resetOnOk><PackageFields sites={sites} /><div><Submit>Add package</Submit></div></ActionForm></div>
         </section>
       </div>
     </>

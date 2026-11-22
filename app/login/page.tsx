@@ -1,24 +1,40 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { AuthForm } from './AuthForm';
+import { FlaskConical } from 'lucide-react';
+import { AuthCard } from '@/components/auth/AuthCard';
+import { AuthShell } from '@/components/auth/AuthShell';
 import { currentUser } from '@/lib/auth';
 import { login } from '@/lib/actions';
+import { IS_CLOUD } from '@/lib/config';
+import { startDemo } from '@/lib/demo';
 
 export const metadata = { title: 'Sign in' };
 
 export default async function Login() {
   if (await currentUser()) redirect('/dashboard');
   return (
-    <div className="auth">
-      <div className="box">
-        <Link href="/" className="brand display accent"><img src="/logo.svg" alt="" /> incnet</Link>
-        <div className="card card-pad">
-          <h1 style={{ fontSize: 22, marginBottom: 4 }}>Sign in</h1>
-          <p className="muted small" style={{ marginBottom: 18 }}>Manage your hotspots, packages and sales.</p>
-          <AuthForm action={login} fields={[{ name: 'email', label: 'Email', type: 'email', autoComplete: 'email' }, { name: 'password', label: 'Password', type: 'password', autoComplete: 'current-password' }]} submit="Sign in" />
-        </div>
-        <p className="muted small" style={{ textAlign: 'center', marginTop: 16 }}>New here? <Link className="accent" href="/signup">Create an account</Link></p>
-      </div>
-    </div>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to manage your hotspots, packages and sales"
+      footer={<>Don&apos;t have an account? <Link href="/signup">Create one</Link></>}
+    >
+      <AuthCard
+        action={login}
+        submit="Sign in"
+        fields={[
+          { name: 'email', label: 'Email', type: 'email', autoComplete: 'email', placeholder: 'you@business.com', icon: 'mail' },
+          { name: 'password', label: 'Password', type: 'password', autoComplete: 'current-password', placeholder: '••••••••', icon: 'lock' },
+        ]}
+      >
+        {IS_CLOUD && (
+          <>
+            <div className="auth-divider"><span>or</span></div>
+            <form action={startDemo}>
+              <button className="auth-alt" type="submit"><FlaskConical size={16} /> Try the live demo, no account needed</button>
+            </form>
+          </>
+        )}
+      </AuthCard>
+    </AuthShell>
   );
 }

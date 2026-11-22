@@ -1,5 +1,5 @@
 import { AccessError, redeemCode } from '@/lib/access';
-import { cleanMac, json, portalSite } from '@/lib/portal';
+import { cleanIp, cleanMac, json, portalSite } from '@/lib/portal';
 import { clientIp, throttled } from '@/lib/throttle';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (!site) return json({ error: 'This hotspot was not found.' }, 404);
   const body = await req.json().catch(() => ({}));
   try {
-    const access = await redeemCode(site, String(body?.code ?? ''), cleanMac(body?.mac));
+    const access = await redeemCode(site, String(body?.code ?? ''), cleanMac(body?.mac), cleanIp(body?.ip));
     return json({ accessId: access.id, code: access.code });
   } catch (err) {
     if (err instanceof AccessError) return json({ error: err.message }, 400);

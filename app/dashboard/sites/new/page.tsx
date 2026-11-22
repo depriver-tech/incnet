@@ -1,40 +1,20 @@
-import { ActionForm, Submit } from '@/components/ActionForm';
-import { createSite } from '@/lib/actions';
+import { NewSiteForm } from './NewSiteForm';
 
 export const metadata = { title: 'Add router' };
 
 export default function NewSite() {
   return (
     <>
-      <div className="page-head"><div><h1>Add a router</h1><p>Two details, then you get one script to paste into the MikroTik.</p></div></div>
-      <div className="grid grid-2">
-        <section className="card card-pad">
-          <ActionForm action={createSite}>
-            <label className="field">Venue name
-              <input name="name" placeholder="Mlimani Café" required autoFocus />
-            </label>
-            <label className="field">Ports for the Wi-Fi access points
-              <input name="ports" defaultValue="ether5" placeholder="ether5, ether6" />
-              <span className="hint">The router ports your access points are plugged into. They will serve the hotspot only, so do not include the port you manage the router from.</span>
-            </label>
-            <details>
-              <summary className="muted small" style={{ cursor: 'pointer' }}>Advanced</summary>
-              <label className="field" style={{ marginTop: 10 }}>Hotspot network
-                <div className="row" style={{ flexWrap: 'nowrap' }}><span className="mono">10.5.</span><input name="subnet" type="number" min={1} max={254} defaultValue={50} style={{ width: 90 }} /><span className="mono">.0/24</span></div>
-                <span className="hint">Change only if 10.5.50.0/24 is already used on this router.</span>
-              </label>
-            </details>
-            <div><Submit pending="Creating…">Create and get the script</Submit></div>
-          </ActionForm>
-        </section>
-        <section className="card card-pad stack">
-          <h2 style={{ fontSize: 16 }}>What you need</h2>
-          <ul className="muted" style={{ paddingLeft: 18, display: 'grid', gap: 6 }}>
-            <li>A MikroTik router on RouterOS 7 with internet.</li>
-            <li>Access points (any brand) in AP or bridge mode, cabled to the ports above.</li>
-            <li>WinBox, WebFig or SSH to open the router terminal.</li>
+      <div className="page-head"><div><h1>Add a router</h1><p>Pick your hardware. incnet writes the setup for you.</p></div></div>
+      <div className="grid" style={{ gridTemplateColumns: 'minmax(0, 1.5fr) minmax(260px, 1fr)', alignItems: 'start' }}>
+        <section className="card card-pad"><NewSiteForm /></section>
+        <section className="card card-pad stack" style={{ gap: 12 }}>
+          <h2 style={{ fontSize: 16 }}>Good to know</h2>
+          <ul className="muted small" style={{ paddingLeft: 18, display: 'grid', gap: 8 }}>
+            <li>No VPN, public IP or port forwarding is needed. Your router calls incnet, so it works behind any internet provider, even on mobile data.</li>
+            <li>Access points of any brand work. Set them to AP (bridge) mode with DHCP off.</li>
+            <li>Not ready with hardware? Start with the Simulator. Everything you set up (packages, vouchers, the Wi-Fi page) carries over.</li>
           </ul>
-          <p className="muted small">No VPN, public IP or port forwarding is needed. The router calls incnet, so it works behind any internet provider.</p>
         </section>
       </div>
     </>

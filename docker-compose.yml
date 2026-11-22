@@ -1,5 +1,6 @@
-# Self-hosting: cp .env.example .env, edit APP_URL and APP_SECRET, then `docker compose up -d`.
-# Put a reverse proxy with HTTPS (Caddy, nginx, Traefik) in front of port 3000.
+# Self-hosting. Easiest: scripts/install.sh does everything below.
+# By hand: cp .env.example .env, set DOMAIN, APP_URL and APP_SECRET, then `docker compose --profile https up -d`
+# (or plain `docker compose up -d` if you already run a reverse proxy in front of port 3000).
 services:
   db:
     image: postgres:17-alpine
@@ -27,5 +28,20 @@ services:
       db:
         condition: service_healthy
 
+  # Automatic HTTPS. Started by scripts/install.sh (docker compose --profile https up -d).
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    command: caddy reverse-proxy --from ${DOMAIN:-localhost} --to app:3000
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy:/data
+    depends_on:
+      - app
+
 volumes:
   pgdata:
+  caddy:

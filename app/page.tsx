@@ -1,131 +1,235 @@
 import Link from 'next/link';
-import { Cable, GitBranch, Globe, Printer, ShieldCheck, Smartphone, Zap } from 'lucide-react';
+import { ArrowRight, Check, Cpu, FlaskConical, GitBranch, Globe, Palette, Printer, Router, ShieldCheck, Smartphone, Terminal, Wifi, Zap } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { IS_CLOUD, PLANS, SOURCE_URL } from '@/lib/config';
+import { startDemo } from '@/lib/demo';
 import { money } from '@/lib/format';
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Syne+Mono&display=swap';
+const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Syne+Mono&display=swap';
+const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/depriver-tech/incnet/main/scripts/install.sh | sudo DOMAIN=wifi.example.com bash';
 
-const FEATURES = [
-  { icon: Cable, title: 'One-paste router setup', text: 'Name the venue, copy one script into the MikroTik terminal, done. Hotspot, DHCP, login page and sync are all set up for you.' },
-  { icon: Globe, title: 'Works behind any ISP', text: 'The router calls incnet, so there is no VPN, public IP or port forwarding to set up. It also works on mobile data links.' },
-  { icon: Smartphone, title: 'Mobile money built in', text: 'Customers pick a package, enter their number and confirm with their PIN on M-Pesa, Mixx by Yas, Airtel Money or Halotel.' },
-  { icon: Printer, title: 'Printable vouchers', text: 'Sell codes at the counter. Time starts on first use, and used codes fade on the print sheet.' },
-  { icon: Zap, title: 'Self-healing', text: 'If a router reboots or its hotspot page is reset, incnet puts everything back on the next check-in.' },
-  { icon: ShieldCheck, title: 'Yours to run', text: 'Open source under AGPL-3.0. Use our cloud, or host it yourself on your own server and domain.' },
+const FAQ = [
+  ['Which routers work?', 'Any MikroTik on RouterOS 7, a Raspberry Pi (3B+, 4 or 5), or any router running OpenWrt. Access points of any brand plug in behind them. No hardware yet? Start with the built-in simulator.'],
+  ['Do I need a public IP, VPN or port forwarding?', 'No. The router calls incnet every few seconds over HTTPS, so it works behind any internet provider, including mobile data links.'],
+  ['How do customers pay?', 'They pick a package on the Wi-Fi page, type their number and confirm with their PIN on M-Pesa, Mixx by Yas, Airtel Money or Halotel. They are online seconds later, with no staff involved. Printed vouchers work too.'],
+  ['Where does the money go?', 'Straight to your own payment account (incpesa or Snippe). incnet never holds your money.'],
+  ['Can I run it on my own server?', 'Yes. incnet is open source under AGPL-3.0. One command installs it on a Raspberry Pi or a VPS with automatic HTTPS, and there is a guide for shared hosting.'],
+  ['What happens if the internet or incnet goes down?', 'Customers already online stay online until their time runs out: the router enforces the limits itself. When the link comes back, the router catches up automatically.'],
 ];
 
 export default async function Home() {
   const user = await currentUser();
   return (
-    <>
+    <div className="lp">
       <link rel="stylesheet" href={FONTS} />
-      <div className="wrap">
-        <header className="top">
-          <Link href="/" className="brand display"><img src="/logo.svg" alt="" /> incnet</Link>
-          <nav>
-            <a href="#how">How it works</a>
-            <a href="#host">{IS_CLOUD ? 'Pricing' : 'Hosting'}</a>
-            <a href={SOURCE_URL} target="_blank" rel="noreferrer" className="row" style={{ gap: 6 }}><GitBranch size={15} /> Source</a>
-            {user ? <Link className="btn btn-sm" href="/dashboard">Dashboard</Link> : <Link className="btn btn-sm btn-ghost" href="/login">Sign in</Link>}
-          </nav>
-        </header>
 
-        <section className="hero">
-          <div>
-            <p className="badge accent" style={{ marginBottom: 18 }}>Open source · MikroTik · Mobile money</p>
-            <h1 className="display">Run a paid Wi-Fi hotspot without the hard parts.</h1>
-            <p className="lead">incnet sells internet packages at your café, hostel or shop. Customers pay by phone or with a voucher and get online by themselves. You set up the router with one paste.</p>
-            <div className="row">
-              <Link className="btn btn-lg" href={user ? '/dashboard' : '/signup'}>{user ? 'Open dashboard' : 'Start free'}</Link>
-              <a className="btn btn-lg btn-ghost" href={SOURCE_URL} target="_blank" rel="noreferrer"><GitBranch size={18} /> Self-host it</a>
+      <header className="lp-nav-wrap">
+        <nav className="lp-nav wrap">
+          <Link href="/" className="lp-brand"><img src="/logo.svg" alt="" /> incnet</Link>
+          <div className="lp-links">
+            <a href="#features">Features</a>
+            <a href="#hardware">Hardware</a>
+            <a href="#pricing">{IS_CLOUD ? 'Pricing' : 'Hosting'}</a>
+            <a href={SOURCE_URL} target="_blank" rel="noreferrer">Docs</a>
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            {user ? <Link className="btn btn-sm" href="/dashboard">Dashboard</Link> : <><Link className="btn btn-sm btn-ghost lp-hide-sm" href="/login">Sign in</Link><Link className="btn btn-sm" href="/signup">Start free</Link></>}
+          </div>
+        </nav>
+      </header>
+
+      <section className="lp-hero">
+        <div className="lp-hero-bg" aria-hidden />
+        <div className="wrap lp-hero-inner">
+          <a className="lp-pill" href={SOURCE_URL} target="_blank" rel="noreferrer"><GitBranch size={13} /> Open source · MikroTik · Raspberry Pi · OpenWrt <ArrowRight size={13} /></a>
+          <h1>Sell Wi-Fi like a pro.<br /><span className="lp-grad">Set it up in one paste.</span></h1>
+          <p className="lp-lead">incnet runs paid hotspots for cafés, hostels, shops and estates. Customers pay with mobile money or a voucher and get online by themselves. Your router is set up with one script.</p>
+          <div className="lp-cta">
+            <Link className="btn btn-lg" href={user ? '/dashboard' : '/signup'}>{user ? 'Open dashboard' : 'Start free'} <ArrowRight size={17} /></Link>
+            {IS_CLOUD && <form action={startDemo}><button className="btn btn-lg btn-ghost" type="submit"><FlaskConical size={17} /> Try the live demo</button></form>}
+          </div>
+          <p className="lp-trust"><Check size={14} /> No card needed <span>·</span> <Check size={14} /> Works behind any ISP <span>·</span> <Check size={14} /> M-Pesa, Mixx by Yas, Airtel Money, Halotel</p>
+
+          <div className="lp-shot">
+            <div className="lp-browser">
+              <div className="lp-browser-bar"><i /><i /><i /><span>incnet.incpritech.com/dashboard</span></div>
+              <picture>
+                <source srcSet="/screens/dashboard-dark.png" media="(prefers-color-scheme: dark)" />
+                <img src="/screens/dashboard.png" alt="The incnet dashboard: sales today, connected codes, routers and recent payments" width={1800} height={1125} />
+              </picture>
             </div>
+            <div className="lp-phone"><img src="/screens/portal-modern.png" alt="The Wi-Fi page a customer sees on their phone" width={390} height={844} /></div>
           </div>
-          <PhoneMock />
-        </section>
-      </div>
-
-      <section className="section" id="how">
-        <div className="wrap grid grid-2" style={{ alignItems: 'center', gap: 40 }}>
-          <div>
-            <p className="eyebrow accent small" style={{ fontWeight: 600, marginBottom: 8 }}>HOW IT WORKS</p>
-            <h2 className="display">From box to selling in about ten minutes.</h2>
-            <p className="muted">No networking degree needed. incnet writes the router configuration for you and keeps it correct.</p>
-          </div>
-          <ol className="flow">
-            <li><div><strong>Create your account</strong><div className="muted small">Starter packages (1 hour, 1 day, 1 week, 1 month) are ready to edit.</div></div></li>
-            <li><div><strong>Add your router</strong><div className="muted small">Pick the ports your access points use and copy the script it gives you.</div></div></li>
-            <li><div><strong>Paste it into the MikroTik</strong><div className="muted small">The router shows as online in the dashboard within seconds.</div></div></li>
-            <li><div><strong>Sell</strong><div className="muted small">Turn on mobile money, print vouchers, and watch sales come in.</div></div></li>
-          </ol>
         </div>
       </section>
 
-      <section className="section">
+      <section className="lp-strip">
+        <div className="wrap lp-strip-grid">
+          <div><strong>1 paste</strong><span>to set up a MikroTik</span></div>
+          <div><strong>1 command</strong><span>for a Raspberry Pi or OpenWrt</span></div>
+          <div><strong>~5 seconds</strong><span>from payment to online</span></div>
+          <div><strong>0</strong><span>VPNs, public IPs or port forwards</span></div>
+        </div>
+      </section>
+
+      <section className="lp-section" id="features">
         <div className="wrap">
-          <h2 className="display" style={{ maxWidth: 640 }}>Everything a hotspot business needs.</h2>
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginTop: 28 }}>
-            {FEATURES.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="card feature"><Icon size={22} /><h3>{title}</h3><p>{text}</p></div>
+          <p className="lp-eyebrow">HOW IT WORKS</p>
+          <h2>From box to selling in ten minutes.</h2>
+          <div className="lp-steps">
+            {[
+              { icon: Router, t: 'Add your router', d: 'Pick MikroTik, Raspberry Pi or OpenWrt. incnet writes the setup for your exact hardware.' },
+              { icon: Terminal, t: 'Paste once', d: 'One script or command sets up the hotspot, DHCP, login page and a sync that heals itself.' },
+              { icon: Smartphone, t: 'Customers pay', d: 'They join your Wi-Fi, pick a package, confirm with their PIN, and they are online.' },
+              { icon: Zap, t: 'You get paid', d: 'Money lands in your own account. Watch sales, connected users and routers live.' },
+            ].map(({ icon: Icon, t, d }, i) => (
+              <div key={t} className="lp-step"><span className="lp-step-n">{i + 1}</span><Icon size={20} /><h3>{t}</h3><p>{d}</p></div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="section" id="host">
+      <section className="lp-section lp-alt">
+        <div className="wrap lp-feature">
+          <div className="lp-feature-text">
+            <p className="lp-eyebrow"><Palette size={14} /> WI-FI PAGE DESIGNER</p>
+            <h2>A Wi-Fi page that looks like your brand.</h2>
+            <p>Five templates (Modern, Classic, Bold, Minimal and Photo), your logo and colours, a headline, terms of use and English or Kiswahili. A live phone preview shows every change as you make it.</p>
+            <ul className="lp-ticks">
+              <li><Check size={16} /> Loads fast on any phone, even before it is online</li>
+              <li><Check size={16} /> Vouchers and mobile money on one screen</li>
+              <li><Check size={16} /> Customers get a code to reconnect later</li>
+            </ul>
+          </div>
+          <div className="lp-phones">
+            <img src="/screens/portal-classic.png" alt="Classic template" width={390} height={844} />
+            <img src="/screens/portal-bold.png" alt="Bold template" width={390} height={844} />
+            <img src="/screens/portal-modern.png" alt="Modern template" width={390} height={844} />
+          </div>
+        </div>
+      </section>
+
+      <section className="lp-section">
+        <div className="wrap lp-feature lp-feature-rev">
+          <div className="lp-feature-text">
+            <p className="lp-eyebrow"><Printer size={14} /> VOUCHERS</p>
+            <h2>Print vouchers people want to keep.</h2>
+            <p>Make up to 500 codes at a time for a specific router and package. Choose Classic, Ticket, Card or Minimal, and decide what each voucher shows. A QR code opens the Wi-Fi page with the code already filled in.</p>
+            <ul className="lp-ticks">
+              <li><Check size={16} /> Time starts on first use, not when printed</li>
+              <li><Check size={16} /> Used codes fade on the sheet</li>
+              <li><Check size={16} /> Cancel a code and it is disconnected in seconds</li>
+            </ul>
+          </div>
+          <div className="lp-frame"><img src="/screens/vouchers.png" alt="A sheet of printable Wi-Fi vouchers with QR codes" width={1800} height={1125} loading="lazy" /></div>
+        </div>
+      </section>
+
+      <section className="lp-section lp-alt">
+        <div className="wrap lp-feature">
+          <div className="lp-feature-text">
+            <p className="lp-eyebrow"><FlaskConical size={14} /> SIMULATOR</p>
+            <h2>Try everything before you touch a router.</h2>
+            <p>The simulator gives you a virtual router and a virtual phone side by side. Buy a package, redeem a voucher and watch the router let the phone online, using test payments where no money moves.</p>
+            {IS_CLOUD && <form action={startDemo}><button className="btn" type="submit">Open the live demo <ArrowRight size={16} /></button></form>}
+          </div>
+          <div className="lp-frame"><img src="/screens/simulator.png" alt="The simulator: a virtual router next to a virtual phone" width={1800} height={1125} loading="lazy" /></div>
+        </div>
+      </section>
+
+      <section className="lp-section" id="hardware">
         <div className="wrap">
-          <h2 className="display">Our cloud, or your server.</h2>
-          <p className="muted" style={{ maxWidth: 620 }}>The same software either way. Start on our cloud with nothing to install, or run it yourself with Docker on any Linux server and your own domain.</p>
-          <div className="grid grid-2" style={{ marginTop: 28 }}>
-            <div className="card card-pad stack" style={{ gap: 12, borderColor: 'var(--accent)' }}>
-              <h3>incnet Cloud</h3>
-              <p className="muted">We run the servers, backups and updates. Mobile money through incpesa.</p>
-              {Object.values(PLANS).map((p) => (
-                <div key={p.name} className="spread" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-                  <div><strong>{p.name}</strong><div className="muted small">{p.note}</div></div>
-                  <strong>{p.price ? `${money(p.price)}/mo` : 'Free'}</strong>
-                </div>
-              ))}
-              <Link className="btn" href="/signup" style={{ justifySelf: 'start' }}>Start free</Link>
-            </div>
-            <div className="card card-pad stack" style={{ gap: 12 }}>
+          <p className="lp-eyebrow">HARDWARE</p>
+          <h2>Bring the router you have.</h2>
+          <div className="lp-hw">
+            <div className="card lp-hw-card"><Router size={22} /><h3>MikroTik</h3><p>Any model on RouterOS 7: hAP, RB5009, CCR. Paste one script into the terminal.</p><code>WinBox → New Terminal → paste</code></div>
+            <div className="card lp-hw-card"><Cpu size={22} /><h3>Raspberry Pi</h3><p>A Pi 3B+, 4 or 5 becomes the hotspot, using its own Wi-Fi or an access point.</p><code>curl … /install | sudo sh</code></div>
+            <div className="card lp-hw-card"><Wifi size={22} /><h3>OpenWrt</h3><p>Any OpenWrt router, with openNDS installed and configured for you.</p><code>curl … /install | sh</code></div>
+            <div className="card lp-hw-card"><FlaskConical size={22} /><h3>Simulator</h3><p>No hardware at all. Learn, demo and set up your packages in the browser.</p><code>Built in</code></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="lp-section lp-alt">
+        <div className="wrap lp-feature lp-feature-rev">
+          <div className="lp-feature-text">
+            <p className="lp-eyebrow"><Globe size={14} /> RUN YOUR BUSINESS</p>
+            <h2>Know what sold, where and when.</h2>
+            <p>Sales by day, mobile money and vouchers, every router&apos;s status and every connected code. Packages can be sold everywhere or at one router only.</p>
+            <ul className="lp-ticks">
+              <li><Check size={16} /> Search any code or phone number</li>
+              <li><Check size={16} /> Sales follow your own time zone</li>
+              <li><Check size={16} /> Self-healing routers: reboots and resets are fixed for you</li>
+            </ul>
+          </div>
+          <div className="lp-frame"><img src="/screens/sales.png" alt="Sales over the last 14 days" width={1800} height={1125} loading="lazy" /></div>
+        </div>
+      </section>
+
+      <section className="lp-section" id="pricing">
+        <div className="wrap">
+          <p className="lp-eyebrow">PRICING</p>
+          <h2>Our cloud, or your server.</h2>
+          <p className="lp-sub">The same software either way. Your customers&apos; payments always go to your own account.</p>
+          <div className="lp-plans">
+            {Object.entries(PLANS).map(([id, p]) => (
+              <div key={id} className={`card lp-plan${id === 'pro' ? ' featured' : ''}`}>
+                {id === 'pro' && <span className="badge accent lp-plan-tag">Most popular</span>}
+                <h3>{p.name}</h3>
+                <div className="lp-price">{p.price ? <>{money(p.price)}<small>/month</small></> : 'Free'}</div>
+                <p>{p.note}</p>
+                <ul className="lp-ticks">
+                  <li><Check size={16} /> Wi-Fi page and voucher designers</li>
+                  <li><Check size={16} /> Mobile money and vouchers</li>
+                  <li><Check size={16} /> {id === 'pro' ? 'Up to 20 routers' : '1 router'}</li>
+                </ul>
+                <Link className={`btn ${id === 'pro' ? '' : 'btn-ghost'}`} href="/signup">Start free</Link>
+              </div>
+            ))}
+            <div className="card lp-plan">
               <h3>Self-hosted</h3>
-              <p className="muted">Free forever, no limits. Bring your own server, domain and payment account (incpesa or Snippe), or run vouchers only.</p>
-              <pre className="code mono small" style={{ padding: 14, whiteSpace: 'pre-wrap' }}>{`git clone ${SOURCE_URL}\ncd incnet && cp .env.example .env\ndocker compose up -d`}</pre>
-              <a className="btn btn-ghost" href={SOURCE_URL} target="_blank" rel="noreferrer" style={{ justifySelf: 'start' }}><GitBranch size={16} /> Read the setup guide</a>
+              <div className="lp-price">Free</div>
+              <p>Open source, no limits. Raspberry Pi, VPS or shared hosting.</p>
+              <div className="lp-code"><code>{INSTALL}</code></div>
+              <a className="btn btn-ghost" href={`${SOURCE_URL}/blob/main/docs/self-hosting.md`} target="_blank" rel="noreferrer"><GitBranch size={16} /> Self-hosting guide</a>
             </div>
           </div>
         </div>
       </section>
 
-      <footer className="section" style={{ padding: '32px 0' }}>
-        <div className="wrap spread muted small">
-          <span>incnet by INCPRITECH · AGPL-3.0</span>
-          <span className="row"><a href={SOURCE_URL}>Source</a><Link href="/login">Sign in</Link></span>
+      <section className="lp-section lp-alt">
+        <div className="wrap lp-faq-wrap">
+          <div>
+            <p className="lp-eyebrow">QUESTIONS</p>
+            <h2>Good to know.</h2>
+            <p className="lp-sub"><ShieldCheck size={16} style={{ verticalAlign: '-3px' }} /> Router tokens and payment keys are encrypted. Codes can only be guessed slowly.</p>
+          </div>
+          <div className="lp-faq">
+            {FAQ.map(([q, a]) => (
+              <details key={q}><summary>{q}<span aria-hidden>+</span></summary><p>{a}</p></details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="lp-final">
+        <div className="wrap">
+          <h2>Ready to sell Wi-Fi?</h2>
+          <p>Set up your first hotspot today. It takes about ten minutes.</p>
+          <div className="lp-cta" style={{ justifyContent: 'center' }}>
+            <Link className="btn btn-lg lp-btn-light" href={user ? '/dashboard' : '/signup'}>{user ? 'Open dashboard' : 'Start free'} <ArrowRight size={17} /></Link>
+            {IS_CLOUD && <form action={startDemo}><button className="btn btn-lg lp-btn-outline" type="submit">Try the live demo</button></form>}
+          </div>
+        </div>
+      </section>
+
+      <footer className="lp-footer">
+        <div className="wrap spread">
+          <Link href="/" className="lp-brand"><img src="/logo.svg" alt="" /> incnet</Link>
+          <span className="muted small">By INCPRITECH · Open source under AGPL-3.0</span>
+          <span className="row small" style={{ gap: 16 }}><a href={SOURCE_URL}>GitHub</a><a href={`${SOURCE_URL}/blob/main/docs/raspberry-pi-gateway.md`}>Raspberry Pi guide</a><Link href="/login">Sign in</Link></span>
         </div>
       </footer>
-    </>
-  );
-}
-
-function PhoneMock() {
-  return (
-    <div className="phone" aria-hidden="true">
-      <div style={{ padding: 16, fontFamily: 'system-ui', color: '#14181a', background: '#f4f6f5' }}>
-        <div className="row" style={{ marginBottom: 12 }}><span style={{ width: 34, height: 34, borderRadius: 10, background: '#0f9d8f', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>M</span><div><strong style={{ fontSize: 14 }}>Mlimani Café</strong><div style={{ fontSize: 11, color: '#5f6b6d' }}>Wi-Fi</div></div></div>
-        <div style={{ background: '#fff', borderRadius: 14, padding: 12, marginBottom: 10, border: '1px solid #e3e8e6' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Buy a package</div>
-          {[['1 hour', '500'], ['1 day', '1,000'], ['1 week', '5,000']].map(([n, p], i) => (
-            <div key={n} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 10px', border: `1.5px solid ${i === 1 ? '#0f9d8f' : '#e3e8e6'}`, borderRadius: 10, marginBottom: 6, fontSize: 13, background: i === 1 ? '#eaf6f4' : '#fff' }}><span>{n}</span><b>TSh {p}</b></div>
-          ))}
-          <div style={{ padding: '9px 10px', border: '1.5px solid #e3e8e6', borderRadius: 10, fontSize: 13, color: '#8a9496', margin: '8px 0' }}>0712 345 678</div>
-          <div style={{ background: '#0f9d8f', color: '#fff', textAlign: 'center', borderRadius: 10, padding: 10, fontWeight: 700, fontSize: 14 }}>Pay TSh 1,000</div>
-        </div>
-        <div style={{ background: '#fff', borderRadius: 14, padding: 12, border: '1px solid #e3e8e6', fontSize: 13 }}>
-          <b>Have a voucher code?</b>
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><div style={{ flex: 1, border: '1.5px solid #e3e8e6', borderRadius: 10, padding: 8, color: '#8a9496', fontFamily: 'monospace' }}>ENTER CODE</div><div style={{ background: '#0f9d8f', color: '#fff', borderRadius: 10, padding: '8px 12px', fontWeight: 700 }}>Connect</div></div>
-        </div>
-      </div>
     </div>
   );
 }

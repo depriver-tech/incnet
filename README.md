@@ -1,10 +1,18 @@
 # incnet
 
-Open-source hotspot billing for MikroTik routers. Sell Wi-Fi packages at a café, hostel or shop with printed vouchers and mobile money (M-Pesa, Mixx by Yas, Airtel Money, Halotel). You set up the router with **one paste**.
+Open-source hotspot billing for **MikroTik, Raspberry Pi and OpenWrt**. Sell Wi-Fi packages at a café, hostel or shop with printed vouchers and mobile money (M-Pesa, Mixx by Yas, Airtel Money, Halotel). You set up the router with **one paste**.
+
+![incnet dashboard](public/screens/dashboard.png)
 
 Use the hosted version at **incnet.incpritech.com**, or run it yourself on your own server and domain. It's the same software either way.
 
 ## What it does
+
+- **Live demo and simulator.** Try everything in the browser with a virtual router, a virtual phone and test payments where no money moves. In cloud mode, a "Try the live demo" button creates a throwaway workspace that is deleted after 24 hours.
+- **Raspberry Pi and OpenWrt.** One command turns a Pi or an OpenWrt router into the hotspot, using [openNDS](https://opennds.readthedocs.io). See [docs/raspberry-pi-gateway.md](docs/raspberry-pi-gateway.md).
+- **Wi-Fi page designer.** Choose from five templates (Modern, Classic, Bold, Minimal, Photo), then add your logo, colours, a background photo, a headline, terms of use and a default language. A live phone preview shows each change.
+- **Voucher designer.** Choose from four print templates (Classic, Ticket, Card, Minimal), with an optional QR code that opens the Wi-Fi page with the code filled in.
+- **Per-router control.** Vouchers are made for one router and one package. Packages can be sold everywhere or at a single router.
 
 - **One-paste router setup.** Add a venue, and incnet writes a RouterOS script that creates the hotspot bridge, DHCP, NAT, walled garden, login page and a sync job. The script is safe to paste again.
 - **No VPN or public IP.** The router calls incnet every few seconds over HTTPS. It works behind ISP NAT and on mobile data links.
@@ -30,6 +38,14 @@ Phone ──Wi-Fi──> Access point ──> MikroTik hotspot ──(login page
 5. When the time runs out or you cancel a code, the router removes the user and disconnects it on the next sync.
 
 ## Self-hosting
+
+One command on a Raspberry Pi or a VPS. It sets up Docker, Postgres and automatic HTTPS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/depriver-tech/incnet/main/scripts/install.sh | sudo DOMAIN=wifi.example.com bash
+```
+
+Shared hosting (cPanel) and manual setups are covered in [docs/self-hosting.md](docs/self-hosting.md). The steps below show the manual Docker route.
 
 You need:
 
@@ -80,6 +96,7 @@ To remove incnet from a router, delete the `incnet` hotspot server, the `incnet-
 
 | Provider | Who it's for | Keys |
 |---|---|---|
+| Test mode | Trying incnet out. Payments complete after about 6 seconds and no money moves | — |
 | incpesa | Anyone with an incpesa merchant account. Money settles to your incpesa balance. | `ip_live_…` API key |
 | Snippe | Operators with their own Snippe account | `snp_…` API key and `whsec_…` webhook secret |
 | None | Vouchers only | — |

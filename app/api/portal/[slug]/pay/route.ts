@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { providerFor } from '@/lib/payments';
 import { ProviderError } from '@/lib/payments/types';
 import { normalizeTzPhone } from '@/lib/phone';
-import { cleanMac, json, portalSite } from '@/lib/portal';
+import { cleanIp, cleanMac, json, portalSite } from '@/lib/portal';
 import { clientIp, throttled } from '@/lib/throttle';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const body = await req.json().catch(() => ({}));
   const phone = normalizeTzPhone(String(body?.phone ?? ''));
   if (!phone) return json({ error: 'Enter a valid mobile number, like 0712 345 678.' }, 400);
-  const pkg = await db.package.findFirst({ where: { id: String(body?.packageId ?? ''), workspaceId: site.workspaceId, active: true } });
+  const pkg = await db.package.findFirst({ where: { id: String(body?.packageId ?? ''), workspaceId: site.workspaceId, active: true, OR: [{ siteId: null }, { siteId: site.id }] } });
   if (!pkg) return json({ error: 'Choose a package.' }, 400);
   if (pkg.price < p.provider.minAmount) return json({ error: `Mobile payments start at TSh ${p.provider.minAmount}.` }, 400);
 
@@ -28,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   if (recent >= 3) return json({ error: 'Too many prompts to this number. Try again in a few minutes.' }, 429);
 
   const payment = await db.payment.create({
-    data: { workspaceId: site.workspaceId, siteId: site.id, packageId: pkg.id, amount: pkg.price, phone, mac: cleanMac(body?.mac), provider: p.provider.id },
+    data: { workspaceId: site.workspaceId, siteId: site.id, packageId: pkg.id, amount: pkg.price, phone, mac: cleanMac(body?.mac), ip: cleanIp(body?.ip), provider: p.provider.id },
   });
   try {
     const result = await p.provider.createCharge(p.creds, {

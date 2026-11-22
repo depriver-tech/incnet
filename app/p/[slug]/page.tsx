@@ -1,17 +1,19 @@
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
-import { duration, money, speed } from '@/lib/format';
+import { portalDesign, portalPackages } from '@/lib/portal';
 import { providerFor } from '@/lib/payments';
-import { Portal } from './Portal';
+import { Portal, type Handoff } from './Portal';
 
 export const dynamic = 'force-dynamic';
+
+const PRIVATE_IP = /^(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
 
 /** Only hand phones back to a router login on a private address, never to an arbitrary site. */
 function routerLogin(value: string | undefined) {
   if (!value) return null;
   try {
     const url = new URL(value);
-    const privateHost = /^(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(url.hostname) || !url.hostname.includes('.');
+    const privateHost = PRIVATE_IP.test(url.hostname) || !url.hostname.includes('.');
     return (url.protocol === 'http:' || url.protocol === 'https:') && privateHost ? `${url.origin}${url.pathname}` : null;
   } catch {
     return null;
@@ -24,26 +26,40 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: site ? `${site.workspace.name} Wi-Fi` : 'Wi-Fi', robots: { index: false } };
 }
 
+/**
+ * The captive portal. Routers add what they know about the phone to the address:
+ * MikroTik: mac, ip, login, dst. openNDS: clientip, clientmac, redir. The simulator: mac, ip.
+ */
 export default async function PortalPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { slug } = await params;
   const q = await searchParams;
   const site = await db.site.findUnique({ where: { slug }, include: { workspace: true } });
   if (!site) notFound();
-  const ws = site.workspace;
-  const packages = await db.package.findMany({ where: { workspaceId: ws.id, active: true }, orderBy: [{ sort: 'asc' }, { price: 'asc' }] });
-  const pay = providerFor(ws);
+  const pay = providerFor(site.workspace);
+
+  const ip = q.ip || q.clientip || null;
+  const dstRaw = q.dst || q.redir || null;
+  let handoff: Handoff = { kind: 'none' };
+  if (site.kind === 'simulated') handoff = { kind: 'router', url: `/p/${slug}/connected` };
+  else if (site.kind === 'opennds' && ip) handoff = { kind: 'gateway' };
+  else { const login = routerLogin(q.login); if (login) handoff = { kind: 'router', url: login }; }
 
   return (
     <Portal
       slug={slug}
-      business={ws.name}
-      welcome={ws.welcomeText}
-      color={ws.brandColor}
-      supportPhone={ws.supportPhone}
+      business={site.workspace.name}
+      design={portalDesign(site.workspace)}
       payments={!!pay}
       minPayment={pay?.provider.minAmount ?? 0}
-      packages={packages.map((p) => ({ id: p.id, name: p.name, price: p.price, priceLabel: money(p.price, ws.currency), duration: duration(p.durationMinutes), speed: speed(p.downKbps), data: p.dataLimitMb ? `${+(p.dataLimitMb / 1024).toFixed(1)} GB` : null }))}
-      ctx={{ mac: q.mac ?? null, login: routerLogin(q.login), dst: q.dst && /^https?:\/\//.test(q.dst) ? q.dst : null, err: q.err?.trim() || null }}
+      packages={await portalPackages(site)}
+      ctx={{
+        mac: q.mac || q.clientmac || null,
+        ip: ip && PRIVATE_IP.test(ip) ? ip : null,
+        handoff,
+        dst: dstRaw && /^https?:\/\//.test(dstRaw) ? dstRaw : null,
+        err: q.err?.trim() || null,
+        code: q.code && /^[A-Za-z0-9]{4,16}$/.test(q.code) ? q.code.toUpperCase() : null,
+      }}
     />
   );
 }

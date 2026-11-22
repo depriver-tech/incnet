@@ -6,7 +6,11 @@ import type { FormState } from '@/lib/actions';
 
 export function Submit({ children, className = 'btn', pending: pendingText }: { children: React.ReactNode; className?: string; pending?: string }) {
   const { pending } = useFormStatus();
-  return <button className={className} type="submit" disabled={pending}>{pending ? pendingText || 'Saving…' : children}</button>;
+  return (
+    <button className={className} type="submit" disabled={pending} aria-busy={pending}>
+      {pending ? <><span className="spinner" aria-hidden /> {pendingText || 'Saving…'}</> : children}
+    </button>
+  );
 }
 
 /** A form bound to a server action that returns { error } or { ok }, shown under the fields. */

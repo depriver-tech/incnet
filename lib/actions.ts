@@ -37,7 +37,8 @@ export async function signup(_: FormState, fd: FormData): Promise<FormState> {
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { name, business, email, password } = parsed.data;
 
-  const users = await db.user.count();
+  // Throwaway demo accounts never count: the first real account owns the server.
+  const users = await db.user.count({ where: { NOT: { email: { endsWith: '@demo.incnet.local' } } } });
   if (users > 0 && !ALLOW_SIGNUP) return { error: 'Sign-up is closed on this server. Ask the owner to invite you.' };
   if (await db.user.findUnique({ where: { email } })) return { error: 'That email already has an account. Sign in instead.' };
 
@@ -78,6 +79,7 @@ export async function changePassword(_: FormState, fd: FormData): Promise<FormSt
 // ── Sites (routers) ───────────────────────────────────────────────
 
 const siteSchema = z.object({
+  kind: z.enum(['mikrotik', 'opennds', 'simulated']).default('mikrotik'),
   name: z.string().min(2, 'Name the venue, e.g. "Mlimani Café".').max(60),
   ports: z.string().max(200).refine((v) => parsePorts(v).length > 0, 'Enter at least one router port, e.g. ether5.'),
   subnet: z.coerce.number().int().min(1, 'Use a number from 1 to 254.').max(254, 'Use a number from 1 to 254.'),
@@ -94,14 +96,17 @@ async function uniqueSlug(base: string) {
 
 export async function createSite(_: FormState, fd: FormData): Promise<FormState> {
   const { workspace } = await requireWorkspace();
-  const parsed = siteSchema.safeParse({ name: field(fd, 'name'), ports: field(fd, 'ports') || 'ether5', subnet: field(fd, 'subnet') || 50 });
+  const kind = field(fd, 'kind') || 'mikrotik';
+  const defaultPort = kind === 'opennds' ? 'wlan0' : kind === 'simulated' ? 'sim0' : 'ether5';
+  const parsed = siteSchema.safeParse({ kind, name: field(fd, 'name'), ports: field(fd, 'ports') || defaultPort, subnet: field(fd, 'subnet') || 50 });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const count = await db.site.count({ where: { workspaceId: workspace.id } });
-  if (count >= siteLimit(workspace.plan)) return { error: 'Your plan has reached its router limit. Upgrade to add more.' };
+  // Simulators are free and never count toward the plan's router limit.
+  const count = await db.site.count({ where: { workspaceId: workspace.id, NOT: { kind: 'simulated' } } });
+  if (parsed.data.kind !== 'simulated' && count >= siteLimit(workspace.plan)) return { error: 'Your plan has reached its router limit. Upgrade to add more.' };
 
   const token = newToken('inr_');
   const site = await db.site.create({
-    data: { workspaceId: workspace.id, name: parsed.data.name, ports: parsePorts(parsed.data.ports).join(','), subnet: parsed.data.subnet, slug: await uniqueSlug(parsed.data.name), tokenHash: sha256(token), tokenEnc: encrypt(token) },
+    data: { workspaceId: workspace.id, kind: parsed.data.kind, name: parsed.data.name, ports: parsePorts(parsed.data.ports).join(','), subnet: parsed.data.subnet, slug: await uniqueSlug(parsed.data.name), tokenHash: sha256(token), tokenEnc: encrypt(token) },
   });
   redirect(`/dashboard/sites/${site.id}`);
 }
@@ -142,6 +147,7 @@ const packageSchema = z.object({
   up: z.coerce.number().positive('Enter an upload speed.').max(10_000),
   data: z.coerce.number().min(0).max(10_000_000).optional(),
   devices: z.coerce.number().int().min(1).max(20),
+  siteId: z.string().max(40).optional(),
 });
 
 const UNIT_MINUTES = { minutes: 1, hours: 60, days: 1440 } as const;
@@ -150,11 +156,13 @@ export async function savePackage(_: FormState, fd: FormData): Promise<FormState
   const { workspace } = await requireWorkspace();
   const parsed = packageSchema.safeParse({
     name: field(fd, 'name'), price: field(fd, 'price'), duration: field(fd, 'duration'), unit: field(fd, 'unit'),
-    down: field(fd, 'down'), up: field(fd, 'up'), data: field(fd, 'data') || undefined, devices: field(fd, 'devices') || 1,
+    down: field(fd, 'down'), up: field(fd, 'up'), data: field(fd, 'data') || undefined, devices: field(fd, 'devices') || 1, siteId: field(fd, 'siteId') || undefined,
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const v = parsed.data;
+  if (v.siteId && !(await db.site.findFirst({ where: { id: v.siteId, workspaceId: workspace.id }, select: { id: true } }))) return { error: 'Choose a router.' };
   const data = {
+    siteId: v.siteId || null,
     name: v.name, price: v.price, durationMinutes: Math.round(v.duration * UNIT_MINUTES[v.unit]),
     downKbps: Math.round(v.down * 1000), upKbps: Math.round(v.up * 1000), dataLimitMb: v.data ? Math.round(v.data * 1024) : null, devices: v.devices,
   };
@@ -178,16 +186,17 @@ export async function createVouchers(_: FormState, fd: FormData): Promise<FormSt
   const { workspace } = await requireWorkspace();
   const count = Number(field(fd, 'count'));
   if (!Number.isInteger(count) || count < 1 || count > 500) return { error: 'Make between 1 and 500 vouchers at a time.' };
-  const pkg = await db.package.findFirst({ where: { id: field(fd, 'packageId'), workspaceId: workspace.id } });
-  if (!pkg) return { error: 'Choose a package.' };
-  const siteId = field(fd, 'siteId') || null;
-  if (siteId && !(await db.site.findFirst({ where: { id: siteId, workspaceId: workspace.id } }))) return { error: 'Choose a site.' };
+  const siteId = field(fd, 'siteId');
+  const site = siteId ? await db.site.findFirst({ where: { id: siteId, workspaceId: workspace.id } }) : null;
+  if (!site) return { error: 'Choose the router these vouchers are for.' };
+  const pkg = await db.package.findFirst({ where: { id: field(fd, 'packageId'), workspaceId: workspace.id, OR: [{ siteId: null }, { siteId: site.id }] } });
+  if (!pkg) return { error: 'Choose a package sold at this router.' };
 
   const batch = await db.$transaction(async (tx) => {
-    const b = await tx.voucherBatch.create({ data: { workspaceId: workspace.id, packageId: pkg.id, count, note: field(fd, 'note').slice(0, 80) || null } });
+    const b = await tx.voucherBatch.create({ data: { workspaceId: workspace.id, siteId: site.id, packageId: pkg.id, count, note: field(fd, 'note').slice(0, 80) || null } });
     const codes = new Set<string>();
     while (codes.size < count) codes.add(await uniqueCode(workspace.id, tx));
-    await tx.access.createMany({ data: [...codes].map((code) => ({ workspaceId: workspace.id, siteId, packageId: pkg.id, batchId: b.id, code, kind: 'voucher' })) });
+    await tx.access.createMany({ data: [...codes].map((code) => ({ workspaceId: workspace.id, siteId: site.id, packageId: pkg.id, batchId: b.id, code, kind: 'voucher' })) });
     return b;
   }, { timeout: 30_000 });
   redirect(`/dashboard/vouchers/${batch.id}`);
@@ -208,9 +217,11 @@ export async function saveBusiness(_: FormState, fd: FormData): Promise<FormStat
   const color = field(fd, 'brandColor');
   if (name.length < 2) return { error: 'Enter the business name.' };
   if (!/^#[0-9a-fA-F]{6}$/.test(color)) return { error: 'Pick a colour.' };
+  const timezone = field(fd, 'timezone') || workspace.timezone;
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }); } catch { return { error: 'Choose a time zone.' }; }
   await db.workspace.update({
     where: { id: workspace.id },
-    data: { name: name.slice(0, 80), brandColor: color, supportPhone: field(fd, 'supportPhone').slice(0, 30) || null, welcomeText: field(fd, 'welcomeText').slice(0, 200) || null },
+    data: { name: name.slice(0, 80), brandColor: color, timezone, supportPhone: field(fd, 'supportPhone').slice(0, 30) || null, welcomeText: field(fd, 'welcomeText').slice(0, 200) || null },
   });
   revalidatePath('/dashboard', 'layout');
   return { ok: 'Saved. The hotspot page uses these details now.' };
@@ -219,7 +230,12 @@ export async function saveBusiness(_: FormState, fd: FormData): Promise<FormStat
 export async function savePayments(_: FormState, fd: FormData): Promise<FormState> {
   const { workspace } = await requireWorkspace();
   const provider = field(fd, 'provider');
-  if (!['none', 'incpesa', 'snippe'].includes(provider)) return { error: 'Choose a payment option.' };
+  if (!['none', 'incpesa', 'snippe', 'test'].includes(provider)) return { error: 'Choose a payment option.' };
+  if (provider === 'test') {
+    await db.workspace.update({ where: { id: workspace.id }, data: { paymentProvider: 'test' } });
+    revalidatePath('/dashboard', 'layout');
+    return { ok: 'Test mode is on. Payments complete by themselves after a few seconds and no money moves. Switch to a real provider before opening to customers.' };
+  }
   const key = field(fd, 'key');
   const secret = field(fd, 'secret');
   if (provider === 'incpesa' && key && !key.startsWith('ip_live_')) return { error: 'incpesa keys start with ip_live_.' };

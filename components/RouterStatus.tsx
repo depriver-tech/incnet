@@ -9,7 +9,8 @@ export function isOnline(lastSeen: string | Date | null) {
   return !!lastSeen && Date.now() - new Date(lastSeen).getTime() < ONLINE_MS;
 }
 
-export function StatusBadge({ lastSeen }: { lastSeen: string | Date | null }) {
+export function StatusBadge({ lastSeen, kind }: { lastSeen: string | Date | null; kind?: string }) {
+  if (kind === 'simulated') return <span className="badge accent"><span className="dot" /> Simulator</span>;
   if (!lastSeen) return <span className="badge warn"><span className="dot" /> Waiting for router</span>;
   return isOnline(lastSeen) ? <span className="badge ok"><span className="dot" /> Online</span> : <span className="badge bad"><span className="dot" /> Offline</span>;
 }

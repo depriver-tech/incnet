@@ -3,6 +3,8 @@ import { changePassword, saveBusiness, savePayments } from '@/lib/actions';
 import { requireWorkspace } from '@/lib/auth';
 import { APP_URL, IS_CLOUD, PLANS } from '@/lib/config';
 import { money } from '@/lib/format';
+import { TIMEZONES } from '@/lib/time';
+import Link from 'next/link';
 
 export const metadata = { title: 'Settings' };
 
@@ -14,22 +16,27 @@ export default async function Settings() {
       <div className="page-head"><div><h1>Settings</h1><p>Your business, the hotspot page and mobile money.</p></div></div>
       <div className="grid grid-2" style={{ alignItems: 'start' }}>
         <section className="card">
-          <div className="card-head"><h2>Business and hotspot page</h2></div>
+          <div className="card-head"><h2>Business</h2></div>
           <div className="card-pad">
             <ActionForm action={saveBusiness}>
               <label className="field">Business name<input name="name" defaultValue={workspace.name} required /></label>
-              <label className="field">Welcome message<input name="welcomeText" defaultValue={workspace.welcomeText ?? ''} placeholder="Fast Wi-Fi for our guests" maxLength={200} /></label>
-              <div className="form-row">
-                <label className="field">Brand colour<input name="brandColor" type="color" defaultValue={workspace.brandColor} style={{ height: 44, padding: 4 }} /></label>
-                <label className="field">Support phone<input name="supportPhone" defaultValue={workspace.supportPhone ?? ''} placeholder="0712 345 678" /></label>
-              </div>
+              <label className="field">Time zone
+                <select name="timezone" defaultValue={workspace.timezone}>
+                  {[...new Set([workspace.timezone, ...TIMEZONES])].map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>)}
+                </select>
+                <span className="hint">Used for &quot;Sales today&quot; and dates.</span>
+              </label>
+              <input type="hidden" name="brandColor" value={workspace.brandColor} />
+              <input type="hidden" name="supportPhone" value={workspace.supportPhone ?? ''} />
+              <input type="hidden" name="welcomeText" value={workspace.welcomeText ?? ''} />
+              <p className="muted small">Logo, colours, text and templates for the Wi-Fi page are in <Link className="accent" href="/dashboard/portal">Wi-Fi page</Link>.</p>
               <div><Submit>Save</Submit></div>
             </ActionForm>
           </div>
         </section>
 
         <section className="card">
-          <div className="card-head"><h2>Mobile money</h2>{workspace.paymentProvider !== 'none' && hasKey ? <span className="badge ok">On</span> : <span className="badge">Off</span>}</div>
+          <div className="card-head"><h2>Mobile money</h2>{workspace.paymentProvider === 'test' ? <span className="badge warn">Test mode</span> : workspace.paymentProvider !== 'none' && hasKey ? <span className="badge ok">On</span> : <span className="badge">Off</span>}</div>
           <div className="card-pad">
             <ActionForm action={savePayments}>
               <label className="field">Take payments with
@@ -37,6 +44,7 @@ export default async function Settings() {
                   <option value="none">Off, vouchers only</option>
                   <option value="incpesa">incpesa (M-Pesa, Mixx by Yas, Airtel Money, Halotel)</option>
                   <option value="snippe">Snippe, with my own account</option>
+                  <option value="test">Test mode (no real money)</option>
                 </select>
               </label>
               <label className="field">API key

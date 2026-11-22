@@ -25,14 +25,14 @@ export default async function Sites() {
           </div>
         ) : (
           <div className="table-wrap"><table>
-            <thead><tr><th>Venue</th><th>Status</th><th>Last check-in</th><th>RouterOS</th><th>Hotspot ports</th></tr></thead>
+            <thead><tr><th>Venue</th><th>Status</th><th>Last check-in</th><th>Type</th><th>Hotspot ports</th></tr></thead>
             <tbody>
               {sites.map((s) => (
                 <tr key={s.id}>
                   <td><Link href={`/dashboard/sites/${s.id}`}><strong>{s.name}</strong></Link></td>
-                  <td><StatusBadge lastSeen={s.lastSeenAt} /></td>
-                  <td className="muted">{ago(s.lastSeenAt)}</td>
-                  <td className="muted">{s.routerVersion ?? '—'}</td>
+                  <td><StatusBadge lastSeen={s.lastSeenAt} kind={s.kind} /></td>
+                  <td className="muted">{s.kind === 'simulated' ? '—' : ago(s.lastSeenAt)}</td>
+                  <td className="muted">{s.kind === 'mikrotik' ? s.routerVersion ?? '—' : s.kind === 'opennds' ? 'openNDS' : 'Simulator'}</td>
                   <td className="mono small">{s.ports}</td>
                 </tr>
               ))}

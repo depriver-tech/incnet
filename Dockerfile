@@ -25,4 +25,4 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 USER incnet
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node server.js"]
+CMD ["sh", "-c", "npx prisma db push && node server.js"]

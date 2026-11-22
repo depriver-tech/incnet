@@ -28,9 +28,23 @@ model Workspace {
   brandColor   String   @default("#17b8a8")
   supportPhone String?
   welcomeText  String?
+  timezone     String   @default("Africa/Dar_es_Salaam")
+  isDemo       Boolean  @default(false) // a throwaway workspace from "Try the live demo"
+
+  // Captive portal design
+  portalTheme    String  @default("modern") // modern | minimal | bold | classic | photo
+  portalLogo     String? // small image as a data: URL
+  portalBg       String? // background photo as a data: URL (photo theme)
+  portalHeadline String?
+  termsText      String?
+  portalLang     String  @default("en") // en | sw
+
+  // Voucher print design
+  voucherTemplate String @default("classic") // classic | ticket | minimal | card
+  voucherOptions  Json   @default("{}")
 
   // Mobile money. Keys are stored encrypted with APP_SECRET.
-  paymentProvider  String  @default("none") // none | incpesa | snippe
+  paymentProvider  String  @default("none") // none | incpesa | snippe | test
   paymentKeyEnc    String?
   paymentSecretEnc String?
 
@@ -63,10 +77,11 @@ model Site {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   name        String
+  kind        String    @default("mikrotik") // mikrotik | opennds (Raspberry Pi / OpenWrt) | simulated
   slug        String    @unique // public portal address: /p/<slug>
   tokenHash   String    @unique // router credential (inr_...), looked up by hash
   tokenEnc    String // the same token, encrypted, so the setup script can be shown again
-  ports       String    @default("ether5") // router ports that serve the hotspot, comma separated
+  ports       String    @default("ether5") // MikroTik: hotspot ports. openNDS: the gateway interface (e.g. wlan0, br-lan)
   subnet      Int       @default(50) // hotspot network is 10.5.<subnet>.0/24
 
   // Reported by the router on each sync.
@@ -80,6 +95,8 @@ model Site {
 
   accesses Access[]
   payments Payment[]
+  packages Package[]
+  batches  VoucherBatch[]
 
   @@index([workspaceId])
 }
@@ -88,6 +105,8 @@ model Package {
   id              String    @id @default(cuid())
   workspaceId     String
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  siteId          String? // null = sold at every router
+  site            Site?     @relation(fields: [siteId], references: [id], onDelete: Cascade)
   name            String
   price           Int
   durationMinutes Int
@@ -124,6 +143,7 @@ model Access {
   status      String        @default("unused") // unused | active | expired | revoked
   phone       String?
   mac         String?
+  ip          String? // the phone's address on the hotspot (openNDS authorises by IP)
   activeSiteId String? // the site where the code was first used
   activatedAt DateTime?
   expiresAt   DateTime?
@@ -141,6 +161,8 @@ model VoucherBatch {
   id          String    @id @default(cuid())
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  siteId      String
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
   packageId   String
   package     Package   @relation(fields: [packageId], references: [id], onDelete: Restrict)
   count       Int
@@ -165,6 +187,7 @@ model Payment {
   amount        Int
   phone         String
   mac           String?
+  ip            String?
   provider      String
   providerRef   String?
   status        String    @default("pending") // pending | completed | failed | expired | needs_review

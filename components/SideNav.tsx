@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart3, Package, Router, Settings, Shield, Ticket, LayoutDashboard } from 'lucide-react';
+import { BarChart3, Package, Router, Settings, Shield, Smartphone, Ticket, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/dashboard/sites', label: 'Routers', icon: Router },
   { href: '/dashboard/packages', label: 'Packages', icon: Package },
   { href: '/dashboard/vouchers', label: 'Vouchers', icon: Ticket },
+  { href: '/dashboard/portal', label: 'Wi-Fi page', icon: Smartphone },
   { href: '/dashboard/sales', label: 'Sales', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];

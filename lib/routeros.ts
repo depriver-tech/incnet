@@ -1,4 +1,5 @@
 import { APP_URL, SYNC_INTERVAL } from './config';
+import type { SyncAccess, SyncPackage } from './sync';
 
 /**
  * Everything incnet sends to a MikroTik router is RouterOS script text.
@@ -130,8 +131,6 @@ export function loginPage(slug: string) {
 `;
 }
 
-export type SyncPackage = { id: string; downKbps: number; upKbps: number; devices: number };
-export type SyncAccess = { code: string; status: string; packageId: string; expiresAt: Date | null; dataLimitMb: number | null };
 
 export const profileName = (packageId: string) => `incnet-${packageId.slice(-10)}`;
 

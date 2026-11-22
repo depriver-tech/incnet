@@ -18,19 +18,25 @@ export async function uniqueCode(workspaceId: string, tx: Prisma.TransactionClie
 export class AccessError extends Error {}
 
 /** Redeems a voucher at a site. Unused codes start their clock now; active codes simply reconnect. */
-export async function redeemCode(site: { id: string; workspaceId: string }, rawCode: string, mac?: string | null) {
+export async function redeemCode(site: { id: string; workspaceId: string }, rawCode: string, mac?: string | null, ip?: string | null) {
   const code = rawCode.trim().toUpperCase().replace(/[\s-]/g, '');
   if (!/^[A-Z0-9]{4,16}$/.test(code)) throw new AccessError('Check the code and try again.');
   const access = await db.access.findUnique({ where: { workspaceId_code: { workspaceId: site.workspaceId, code } }, include: { package: true } });
   if (!access || (access.siteId && access.siteId !== site.id)) throw new AccessError('That code was not found. Check it and try again.');
   if (access.status === 'revoked') throw new AccessError('That code has been cancelled.');
   if (access.status === 'expired' || (access.expiresAt && access.expiresAt < new Date())) throw new AccessError('That code has expired. Buy a new package to continue.');
-  if (access.status === 'active') return access;
+  if (access.status === 'active') {
+    // Reconnecting, perhaps with a new address: record it so the gateway lets this phone in.
+    if ((ip && ip !== access.ip) || (mac && mac !== access.mac)) {
+      return db.access.update({ where: { id: access.id }, data: { ip: ip || access.ip, mac: mac || access.mac, activeSiteId: site.id }, include: { package: true } });
+    }
+    return access;
+  }
 
   const now = new Date();
   const claimed = await db.access.updateMany({
     where: { id: access.id, status: 'unused' },
-    data: { status: 'active', activatedAt: now, expiresAt: new Date(now.getTime() + access.package.durationMinutes * 60_000), mac: mac || null, activeSiteId: site.id },
+    data: { status: 'active', activatedAt: now, expiresAt: new Date(now.getTime() + access.package.durationMinutes * 60_000), mac: mac || null, ip: ip || null, activeSiteId: site.id },
   });
   if (claimed.count !== 1) throw new AccessError('That code was just used. Try again.');
   return db.access.findUniqueOrThrow({ where: { id: access.id }, include: { package: true } });
@@ -53,8 +59,8 @@ export async function applyCharge(paymentId: string, result: { status: string; a
       const now = new Date();
       const access = await tx.access.create({
         data: {
-          workspaceId: payment.workspaceId, siteId: null, packageId: payment.packageId, code: await uniqueCode(payment.workspaceId, tx), kind: 'payment', status: 'active',
-          phone: payment.phone, mac: payment.mac, activeSiteId: payment.siteId, activatedAt: now, expiresAt: new Date(now.getTime() + payment.package.durationMinutes * 60_000),
+          workspaceId: payment.workspaceId, siteId: payment.siteId, packageId: payment.packageId, code: await uniqueCode(payment.workspaceId, tx), kind: 'payment', status: 'active',
+          phone: payment.phone, mac: payment.mac, ip: payment.ip, activeSiteId: payment.siteId, activatedAt: now, expiresAt: new Date(now.getTime() + payment.package.durationMinutes * 60_000),
         },
       });
       await tx.payment.update({ where: { id: payment.id }, data: { accessId: access.id } });

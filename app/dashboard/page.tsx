@@ -6,20 +6,16 @@ import { db } from '@/lib/db';
 import { ago, dateTime, money } from '@/lib/format';
 import { maskPhone } from '@/lib/phone';
 import { PayBadge } from '@/components/Badges';
+import { startOfDay, startOfMonth } from '@/lib/time';
 
 export const metadata = { title: 'Overview' };
-
-function startOfDay() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 export default async function Overview() {
   const { workspace } = await requireWorkspace();
   const ws = workspace.id;
-  const today = startOfDay();
-  const month = new Date(today.getFullYear(), today.getMonth(), 1);
+  // Days start at midnight in the business's own time zone, not the server's.
+  const today = startOfDay(workspace.timezone);
+  const month = startOfMonth(workspace.timezone);
 
   const [sites, packages, vouchers, active, todaySales, monthSales, voucherToday, recent] = await Promise.all([
     db.site.findMany({ where: { workspaceId: ws }, orderBy: { createdAt: 'asc' } }),
@@ -32,7 +28,7 @@ export default async function Overview() {
     db.payment.findMany({ where: { workspaceId: ws }, orderBy: { createdAt: 'desc' }, take: 6, include: { package: true } }),
   ]);
 
-  const online = sites.some((s) => s.lastSeenAt && Date.now() - s.lastSeenAt.getTime() < 45_000);
+  const online = sites.some((s) => s.kind === 'simulated' || (s.lastSeenAt && Date.now() - s.lastSeenAt.getTime() < 45_000));
   const steps = [
     { done: sites.length > 0, title: 'Add your router', text: 'Name the venue and copy one script into your MikroTik.', href: sites[0] ? `/dashboard/sites/${sites[0].id}` : '/dashboard/sites/new', cta: 'Add router' },
     { done: online, title: 'Router online', text: 'The router checks in with incnet by itself after the script runs.', href: sites[0] ? `/dashboard/sites/${sites[0].id}` : '/dashboard/sites/new', cta: 'See setup' },
@@ -82,8 +78,8 @@ export default async function Overview() {
             <table><tbody>
               {sites.map((s) => (
                 <tr key={s.id}>
-                  <td><Link href={`/dashboard/sites/${s.id}`}><strong>{s.name}</strong></Link><div className="muted small">Last check-in {ago(s.lastSeenAt)}</div></td>
-                  <td style={{ textAlign: 'right' }}><StatusBadge lastSeen={s.lastSeenAt} /></td>
+                  <td><Link href={`/dashboard/sites/${s.id}`}><strong>{s.name}</strong></Link><div className="muted small">{s.kind === 'simulated' ? 'Virtual router in your browser' : `Last check-in ${ago(s.lastSeenAt)}`}</div></td>
+                  <td style={{ textAlign: 'right' }}><StatusBadge lastSeen={s.lastSeenAt} kind={s.kind} /></td>
                 </tr>
               ))}
             </tbody></table>

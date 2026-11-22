@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { ActionForm, Submit } from '@/components/ActionForm';
 import { AccessBadge } from '@/components/Badges';
-import { createVouchers, revokeAccess } from '@/lib/actions';
+import { revokeAccess } from '@/lib/actions';
+import { Palette } from 'lucide-react';
+import { VoucherForm } from './VoucherForm';
 import { requireWorkspace } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { dateTime, duration, money } from '@/lib/format';
@@ -13,32 +14,23 @@ export default async function Vouchers({ searchParams }: { searchParams: Promise
   const { q } = await searchParams;
   const query = (q || '').trim().toUpperCase();
   const [packages, sites, batches, found] = await Promise.all([
-    db.package.findMany({ where: { workspaceId: workspace.id, active: true }, orderBy: [{ sort: 'asc' }, { price: 'asc' }] }),
+    db.package.findMany({ where: { workspaceId: workspace.id, active: true }, orderBy: [{ sort: 'asc' }, { price: 'asc' }], select: { id: true, name: true, price: true, siteId: true } }),
     db.site.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'asc' } }),
-    db.voucherBatch.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'desc' }, take: 30, include: { package: true, _count: { select: { accesses: { where: { status: { not: 'unused' } } } } } } }),
+    db.voucherBatch.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'desc' }, take: 30, include: { package: true, site: { select: { name: true } }, _count: { select: { accesses: { where: { status: { not: 'unused' } } } } } } }),
     query ? db.access.findMany({ where: { workspaceId: workspace.id, OR: [{ code: { contains: query } }, { phone: { contains: query.replace(/^0/, '') } }] }, take: 20, include: { package: true }, orderBy: { createdAt: 'desc' } }) : Promise.resolve([]),
   ]);
 
   return (
     <>
-      <div className="page-head"><div><h1>Vouchers</h1><p>Print codes to sell at the counter. Each code works once, and its time starts on first use.</p></div></div>
+      <div className="page-head">
+        <div><h1>Vouchers</h1><p>Print codes to sell at the counter. Each code works once, on one router, and its time starts on first use.</p></div>
+        <Link className="btn btn-ghost" href="/dashboard/vouchers/design"><Palette size={16} /> Design vouchers</Link>
+      </div>
       <div className="grid" style={{ gridTemplateColumns: 'minmax(280px, 1fr) minmax(0, 1.6fr)', alignItems: 'start' }}>
         <section className="card">
           <div className="card-head"><h2>Make vouchers</h2></div>
           <div className="card-pad">
-            <ActionForm action={createVouchers}>
-              <label className="field">Package
-                <select name="packageId" required>{packages.map((p) => <option key={p.id} value={p.id}>{p.name} · {money(p.price)}</option>)}</select>
-              </label>
-              <label className="field">How many<input name="count" type="number" min={1} max={500} defaultValue={40} required /></label>
-              {sites.length > 1 && (
-                <label className="field">Works at
-                  <select name="siteId" defaultValue=""><option value="">Every router</option>{sites.map((s) => <option key={s.id} value={s.id}>{s.name} only</option>)}</select>
-                </label>
-              )}
-              <label className="field">Note (optional)<input name="note" placeholder="For the front desk" maxLength={80} /></label>
-              <div><Submit pending="Making codes…">Make and print</Submit></div>
-            </ActionForm>
+            <VoucherForm sites={sites.map((x) => ({ id: x.id, name: x.name }))} packages={packages.map((p) => ({ id: p.id, name: p.name, siteId: p.siteId, label: `${p.name} · ${money(p.price)}` }))} />
           </div>
         </section>
 
@@ -70,7 +62,7 @@ export default async function Vouchers({ searchParams }: { searchParams: Promise
                 <tbody>
                   {batches.map((b) => (
                     <tr key={b.id}>
-                      <td><strong>{b.count} × {b.package.name}</strong><div className="muted small">{duration(b.package.durationMinutes)} · {money(b.package.price)}{b.note ? ` · ${b.note}` : ''}</div></td>
+                      <td><strong>{b.count} × {b.package.name}</strong><div className="muted small">{b.site.name} · {duration(b.package.durationMinutes)} · {money(b.package.price)}{b.note ? ` · ${b.note}` : ''}</div></td>
                       <td className="muted">{b._count.accesses} / {b.count}</td>
                       <td className="muted small">{dateTime(b.createdAt)}</td>
                       <td style={{ textAlign: 'right' }}><Link className="btn btn-ghost btn-sm" href={`/dashboard/vouchers/${b.id}`}>Print</Link></td>

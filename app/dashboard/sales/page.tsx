@@ -3,13 +3,14 @@ import { requireWorkspace } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { dateTime, money } from '@/lib/format';
 import { maskPhone } from '@/lib/phone';
+import { dayKey, startOfDay } from '@/lib/time';
 
 export const metadata = { title: 'Sales' };
 
 export default async function Sales() {
   const { workspace } = await requireWorkspace();
-  const since = new Date(Date.now() - 13 * 86_400_000);
-  since.setHours(0, 0, 0, 0);
+  const tz = workspace.timezone;
+  const since = startOfDay(tz, new Date(Date.now() - 13 * 86_400_000));
   const [payments, recentPaid, vouchersUsed] = await Promise.all([
     db.payment.findMany({ where: { workspaceId: workspace.id }, orderBy: { createdAt: 'desc' }, take: 100, include: { package: true, site: true, access: { select: { code: true } } } }),
     db.payment.findMany({ where: { workspaceId: workspace.id, status: 'completed', completedAt: { gte: since } }, select: { amount: true, completedAt: true } }),
@@ -18,12 +19,12 @@ export default async function Sales() {
 
   // Last 14 days: mobile money received plus the value of vouchers used.
   const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(since.getTime() + i * 86_400_000);
-    return { key: d.toDateString(), label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), mobile: 0, voucher: 0 };
+    const d = new Date(since.getTime() + i * 86_400_000 + 12 * 3600_000);
+    return { key: dayKey(tz, d), label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: tz }), mobile: 0, voucher: 0 };
   });
   const byKey = new Map(days.map((d) => [d.key, d]));
-  for (const p of recentPaid) { const d = byKey.get(p.completedAt!.toDateString()); if (d) d.mobile += p.amount; }
-  for (const v of vouchersUsed) { const d = byKey.get(v.activatedAt!.toDateString()); if (d) d.voucher += v.package.price; }
+  for (const p of recentPaid) { const d = byKey.get(dayKey(tz, p.completedAt!)); if (d) d.mobile += p.amount; }
+  for (const v of vouchersUsed) { const d = byKey.get(dayKey(tz, v.activatedAt!)); if (d) d.voucher += v.package.price; }
   const max = Math.max(1, ...days.map((d) => d.mobile + d.voucher));
   const total = days.reduce((s, d) => s + d.mobile + d.voucher, 0);
 

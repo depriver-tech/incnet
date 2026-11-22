@@ -17,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <SideNav admin={user.isAdmin && IS_CLOUD} />
         <div className="foot">
           <div style={{ fontWeight: 600 }}>{workspace.name}</div>
-          <div className="muted small">{user.email}</div>
+          <div className="muted small" style={{ wordBreak: 'break-all' }}>{workspace.isDemo ? 'Demo account · resets daily' : user.email}</div>
           {IS_CLOUD && <div className="small" style={{ marginTop: 6 }}><span className="badge accent">{PLANS[workspace.plan as keyof typeof PLANS]?.name ?? 'Starter'} plan</span></div>}
           <form action={logout} style={{ marginTop: 10 }}>
             <button className="btn btn-ghost btn-sm" type="submit"><LogOut size={14} /> Sign out</button>
