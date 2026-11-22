@@ -1,3 +1,4 @@
+import { Fonts } from '@/components/Fonts';
 import Link from 'next/link';
 import { LogOut } from 'lucide-react';
 import { SideNav } from '@/components/SideNav';
@@ -5,13 +6,12 @@ import { logout } from '@/lib/actions';
 import { requireWorkspace } from '@/lib/auth';
 import { IS_CLOUD, PLANS } from '@/lib/config';
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Syne+Mono&display=swap';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, workspace } = await requireWorkspace();
   return (
     <div className="shell">
-      <link rel="stylesheet" href={FONTS} />
+      <Fonts />
       <aside className="side">
         <Link href="/dashboard" className="logo display accent"><img src="/logo.svg" alt="" /> incnet</Link>
         <SideNav admin={user.isAdmin && IS_CLOUD} />

@@ -1,3 +1,4 @@
+import { Fonts } from '@/components/Fonts';
 import Link from 'next/link';
 import { ArrowRight, Check, Cpu, FlaskConical, GitBranch, Globe, Palette, Printer, Router, ShieldCheck, Smartphone, Terminal, Wifi, Zap } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
@@ -8,7 +9,6 @@ import { money } from '@/lib/format';
 import { HeroDashboard } from '@/components/landing/HeroDashboard';
 import { Portal } from './p/[slug]/Portal';
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Syne+Mono&display=swap';
 
 const FAQ = [
   ['Which routers work?', 'Any MikroTik on RouterOS 7, a Raspberry Pi (3B+, 4 or 5), or any router running OpenWrt. Access points of any brand plug in behind them. No hardware yet? Start with the built-in simulator.'],
@@ -23,7 +23,7 @@ export default async function Home() {
   const user = await currentUser();
   return (
     <div className="lp">
-      <link rel="stylesheet" href={FONTS} />
+      <Fonts />
 
       <header className="lp-nav-wrap">
         <nav className="lp-nav wrap">
